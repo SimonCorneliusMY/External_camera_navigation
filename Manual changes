@@ -1,0 +1,34 @@
+Date: 241206
+Author: Simon Peter Cornelius
+Email: simoncornelius16@gmail.com
+
+This is a simple backup of the packages used to interface with ROS2 humble packages and Nav2 framework.
+
+This backup folder DOES NOT CONTAIN all the packages/files needed to run and requires installation of ROS2 humble, TurtleBot3 packages, and Nav2 packages
+
+How to run demo
+1. The folder name cannot contain any brackets "()"
+2. Open the folder in command line and run the codes:
+	a) colcon build --symlink-install
+	b) . install/setup.bash
+	c) ros2 launch turtlebot3_gazebo my_world.launch.py
+3. Open a new terminal in the same folder and run the codes:
+	a) ros2 launch tb3_nav2_commander bringup.launch.py map:=./map.yaml
+4. Open a new terminal and run the code
+	a) rviz2
+5. In rviz2 gui, press the following buttons:
+	a) add
+	b) By topic
+	c) /global_costmap/costmap/Map
+6. Repeat step 5 for:
+	a) /local_costmap/costmap/Map
+	b) /plan/Path
+7. For robot pose press
+	a) add
+	b) By display type
+	c) TF
+8. To have top down view press
+	a) on the right side of rviz2 gui press Orbit (rviz_default_plugin)
+	b) down down menu should appear
+	c) press top down ortho
+9. You can now set the 2D goal pose for navigation demo

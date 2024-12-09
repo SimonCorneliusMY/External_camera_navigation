@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/ros/humble/**",
+                "/opt/ros/humble/share/ament_index/resource_index/package_run_dependencies",
+                "/opt/ros/humble/include",
+                "${workspaceFolder}/src/nav2_gradient_costmap_plugin/**",
+                "${workspaceFolder}/src/nav2_gradient_costmap_plugin/include/**",
+                "/usr/include/opencv4"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}
