@@ -1,3 +1,11 @@
-/build/
-/install/
-/log/
+# Ignore everything
+*
+
+# Don't ignore directories (to allow tracking of directories)
+!*/
+
+# Don't ignore folders that contain 'plugin' in their name
+
+!/build/nav2_gradient_costmap_plugin/**
+!/src/**
+
