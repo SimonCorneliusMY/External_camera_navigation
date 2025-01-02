@@ -1,10 +1,28 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        
-
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug C++",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "/home/tarumt2204/External_camera_navigation/src/camera_cpp/src/camera_publisher.cpp",  // Path to your executable
+      "args": [],
+      "stopAtEntry": true,
+      "cwd": "/home/tarumt2204/External_camera_navigation/src/camera_cpp",  // Set to the working directory
+      "environment": [],
+      "externalConsole": true,  // Use an external console for input/output
+      "MIMode": "gdb",  // Use gdb debugger
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "miDebuggerPath": "/usr/bin/gdb",  // Path to gdb (ensure it's installed)
+      "preLaunchTask": "build",  // Ensure build task is run before debugging
+      "miDebuggerArgs": "",
+      "logging": { "moduleLoad": false }
+    }
+  ]
 }

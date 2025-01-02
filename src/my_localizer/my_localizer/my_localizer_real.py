@@ -9,7 +9,7 @@ from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
 from turtlebot3_msgs.msg import Astar
-from rclpy.qos import QoSProfile
+import rclpy.qos
 
 from sensor_msgs.msg import Imu 
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -28,18 +28,13 @@ import os
 import ctypes
 
 
-
-
-
 class top_camera(LifecycleNode):
 
     def __init__(self):
         super().__init__('localizer')
 
-        cv.namedWindow('mask',cv.WINDOW_NORMAL) 
-        cv.namedWindow('homographic',cv.WINDOW_NORMAL) 
-        cv.namedWindow('camera_local',cv.WINDOW_NORMAL)
-        cv.namedWindow('current_frame_mapping',cv.WINDOW_NORMAL)
+        cv.namedWindow("Map",cv.WINDOW_NORMAL)
+
         self.current_frame = 0
         self.annotated_frame = 0
         self.imu_data= None
@@ -48,54 +43,50 @@ class top_camera(LifecycleNode):
         self.timer = None
         self.imu_subscription = None
         self.camera_subscription = None
-        self.homographic = True
+
         self.model = YOLO("/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_v3/weights/best.pt") 
-        self.pose_xy = [0.0,0.0]
+        
         self.size = 76
-        self.maze = []
+        self.maze_ros = []
+        self.maze_image = np.array([[[0]]])
         self.height = 0
         self.width = 0
-        # self.tb3_box_TLBR = []
+        # TurtleBot3 pose from camera and homographic transform
         self.pose_xy_pixels = [0,0]
+        self.pose_xy_homo = [0.0,0.0]
         self.pose_xy_pixels_homo = [0,0]
+
+        self.homo_resolution = 3.54/1203
         self.yolo_results = []
+        self.show_homographic_region = True
+        
+        self.imu_data= Imu()
+        self.br = CvBridge()
+        self.current_frame = 0
 
         np.set_printoptions(suppress=True,precision=2)  #suppress scientific notation and set to 2 decimal places for numpy value.
-        self.current_frame = 0
-        qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
+        qos_policy_reliable = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
                                     durability = rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL,
                                     history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                     depth = 10
                                     )
-        self.imu_data= Imu()
-        self.camera_subscription = self.create_subscription(Image,'camera/image', self.camera_callback,10)
-        # self.map_subscription = self.create_subscription(OccupancyGrid,'map',self.map_subscription_callback,qos_policy)
-
+        qos_policy_best_effort = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
+                                    durability = rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL,
+                                    history=rclpy.qos.HistoryPolicy.KEEP_LAST,
+                                    depth = 10
+                                    )
         
-        self.br = CvBridge()
 
-
-        #self.map = StaticTransformBroadcaster(self,qos_policy)
+        self.camera_subscription = self.create_subscription(Image,'camera/image', self.camera_callback,qos_policy_best_effort)
         self.localization_tf = TransformBroadcaster(self)
-        self.timer = self.create_timer(0.01,self.broadcast_transform)
         self.imu_subscription = self.create_subscription(Imu, 'imu', self.imu_callback, 10)
-        self.map_publisher = self.create_publisher(OccupancyGrid,'map',qos_policy)
-        self.camera_pose = self.create_publisher(PoseWithCovarianceStamped,'amcl_pose',qos_policy)
-        #self.camera_pose_timer = self.create_timer(1.0,self.camera_pose_callback)
+        self.map_publisher = self.create_publisher(OccupancyGrid,'map',qos_policy_reliable)
+        self.camera_pose = self.create_publisher(PoseWithCovarianceStamped,'amcl_pose',qos_policy_reliable)
         self.map_timer = self.create_timer(0.01,self.map_callback)
 
  #lifecycle is used to activate simple commander api, normal node failed 27/9/2024  
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
         self.get_logger().info(f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'configure'")
-
-        
-        # self.imu_data= Imu() 
-        # self.br = CvBridge()
-        # self.localization_tf = TransformBroadcaster(self)
-        # self.timer = self.create_timer(0.01,self.broadcast_transform)
-        # self.timer.cancel
-        # self.imu_subscription = self.create_subscription(Imu, 'imu', self.imu_callback, 10)
-        # self.camera_subscription = self.create_subscription(Image,'camera/image_raw', self.camera_callback,10)
         return TransitionCallbackReturn.SUCCESS
         
     def on_cleanup(self, state: LifecycleState) -> TransitionCallbackReturn:
@@ -108,9 +99,6 @@ class top_camera(LifecycleNode):
         return TransitionCallbackReturn.SUCCESS
     def on_activate(self, state: LifecycleState) -> TransitionCallbackReturn:
         self.get_logger().info(f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'activate'")
-
-        
-
         return TransitionCallbackReturn.SUCCESS
     def on_deactivate(self, state: LifecycleState) -> TransitionCallbackReturn:
         self.get_logger().info(f"Node '{self.get_name()}' is in state '{state.label}'. Transitioning to 'deactivate'")
@@ -120,23 +108,6 @@ class top_camera(LifecycleNode):
         return TransitionCallbackReturn.SUCCESS
  #lifecycle is used to activate simple commander api 27/9/2024    
 
-    # def map_subscription_callback(self, msg: OccupancyGrid):   #todo
-    #     self.get_logger().info(f'Unique: {np.unique(msg.data)}')
-    #     map_data = np.array(msg.data, dtype=np.int8)
-    #     map_data = map_data.reshape((msg.info.height, msg.info.width))
-        
-    #     # Normalize the map data for visualization
-    #     # Occupied cells (value 100) will be shown in white, free cells (value 0) in black
-    #     # Unknown cells (-1) can be shown in gray (e.g., 128)
-
-    #     # Map cells: occupied (100) -> 255, free (0) -> 0, unknown (-1) -> 128
-    #     image = np.zeros_like(map_data, dtype=np.uint8)
-    #     image[map_data == 100] = 255  # Occupied cells
-    #     image[map_data == 0] = 0      # Free cells
-    #     image[map_data == -1] = 128   # Unknown cells
-        
-    #     # Display the map using OpenCV
-    #     cv.imshow('Map', image)
 
     def map_callback(self):
         map = OccupancyGrid()
@@ -155,7 +126,7 @@ class top_camera(LifecycleNode):
         map.info.origin.position.x =  0.0 #manually obtained through trial and error, will fix later 7/10/2024
         map.info.origin.position.y = 0.0    #1080*4/1044
         map.info.origin.position.z = 0.0         
-        map.data = self.maze
+        map.data = self.maze_ros
 
         self.map_publisher.publish(map)
 
@@ -164,15 +135,17 @@ class top_camera(LifecycleNode):
         odom_to_basefootprint.header.stamp = self.get_clock().now().to_msg()
         odom_to_basefootprint.header.frame_id = 'odom'
         odom_to_basefootprint.child_frame_id = 'base_footprint'
-        odom_to_basefootprint.transform.translation.x = self.pose_xy[0]
-        odom_to_basefootprint.transform.translation.y = self.pose_xy[1] #+1080*4/1044   #1080*4/1044 added because global costmap not same as map 24/10/2024
+        odom_to_basefootprint.transform.translation.x = self.pose_xy_homo[0]
+        odom_to_basefootprint.transform.translation.y = self.pose_xy_homo[1] #+1080*4/1044   #1080*4/1044 added because global costmap not same as map 24/10/2024
         odom_to_basefootprint.transform.translation.z = 0.0
+
         
 
         odom_to_basefootprint.transform.rotation.x = self.imu_data.orientation.x
         odom_to_basefootprint.transform.rotation.y = self.imu_data.orientation.y
         odom_to_basefootprint.transform.rotation.z = self.imu_data.orientation.z
         odom_to_basefootprint.transform.rotation.w = self.imu_data.orientation.w
+        
 
         map_to_odom = TransformStamped()
         
@@ -200,47 +173,26 @@ class top_camera(LifecycleNode):
     def camera_callback(self, data):
         #convert ros2 image data type to opencv image array
         self.current_frame = self.br.imgmsg_to_cv2(data)
-        cv.imshow('camera_local',self.current_frame)
         self.localization_yolov8()
-        self.mapping()
+        # self.mapping()
 
-
-    def imu_callback(self,data):
+    def imu_callback(self,data:Imu):
         self.imu_data= data
+        print("Angle: ", euler_from_quaternion(data.orientation.x,data.orientation.y,data.orientation.z,data.orientation.w))
         
-    def broadcast_transform(self):
-        return
-
-        # map_to_odom = TransformStamped()
-        
- 
-        # map_to_odom.header.stamp = self.get_clock().now().to_msg()
-        # map_to_odom.header.frame_id = 'map'
-        # map_to_odom.child_frame_id = 'odom'
-        # map_to_odom.transform.translation.x = 0.0
-        # map_to_odom.transform.translation.y = 0.0
-        # map_to_odom.transform.translation.z = 0.0
-        
-
-        # map_to_odom.transform.rotation.x = 0.0
-        # map_to_odom.transform.rotation.y = 0.0
-        # map_to_odom.transform.rotation.z = 0.0
-        # map_to_odom.transform.rotation.w = 1.0
-        # self.localization_tf.sendTransform(map_to_odom)
 
     def localization_yolov8(self):
 
         if isinstance(self.current_frame, int):
             # Handle the case where current_frame is not a valid image
-            return [0.0, 0.0]
+            return
         
         self.yolo_results = self.model.track(self.current_frame,conf = 0.7,verbose = False)  # Assuming this returns detections
 
         # Check if any objects are detected
         if not self.yolo_results or len(self.yolo_results[0].boxes) == 0:
-            # self.tb3_box_TLBR = []
             # No objects detected, return default values
-            return [0.0, 0.0]
+            return
 
         #annotate image with bounding box no labels
         self.annotated_frame = self.yolo_results[0].plot(labels=False)
@@ -250,16 +202,7 @@ class top_camera(LifecycleNode):
         #middle point of x/column
         self.pose_xy_pixels[0] = (tb3_box_TLBR[0]+tb3_box_TLBR[2])/2
         #get the lower higher point of the y/row (because 0,0 is top left)
-        self.pose_xy_pixels[1] = tb3_box_TLBR[3]
-        #draw dot of pose
-        #self.current_frame = cv.circle(annotated_frame,tb3_pose,5,(255,0,0),-1,cv.LINE_8,)
-        # self.pose_xy = np.int16(self.pose_xy_pixels)*3.54/1203    #3.54m = 1203 pixels for real 4/12/2024
-
-
-        #convert to float
-        # self.pose_xy = [float(val) for val in self.pose_xy]
-
-        
+        self.pose_xy_pixels[1] = tb3_box_TLBR[3]    
     
     def colour_localization_mapping(self):
         default_pose = np.array([1.0,1.0])
@@ -328,7 +271,6 @@ class top_camera(LifecycleNode):
 
         homographic_call = True
 
-        cv.imshow('current_frame_mapping',self.current_frame)
 
         #need a quick way to create the boundary based on given RGB values
         lower = np.array([10,0,0])
@@ -356,46 +298,47 @@ class top_camera(LifecycleNode):
 
 
         if homographic_call == True:
-            mask,self.pose_xy,self.pose_xy_pixels_homo = homographic(mask,self.pose_xy_pixels)
-            homo,x, y = homographic(self.current_frame,self.pose_xy_pixels)
+            self.maze_image = self.homographic(mask,self.pose_xy_pixels)
+
 
         #flip horizontally opencv data is origin is top left while map data is bottom left
-        maze_bw_flip = cv.flip(mask,0)
+        maze_bw_flip = cv.flip(self.maze_image,0)
         #row major order, and make sure values are int8
-        self.maze = np.array(maze_bw_flip,np.int8).reshape(-1).tolist()
-        self.width = mask.shape[1]
-        self.height = mask.shape[0]
-
-        cv.imshow('mask',mask)
-        # cv.imshow('maze_bw', )
-        cv.imshow('homographic',homo )
-        cv.waitKey(1)
-
-
-def homographic(img,pose):
-
-    #specify the 4 corner coordinates are col row / x y. Row major order (Z shape)
-    pts1 = np.float32([[599,98],[938,104],[72,532],[1275,637]])
-    pts2 = np.float32([[0,0],[1203,0],[0,2869],[1203,2869]])
-    M = cv.getPerspectiveTransform(pts1,pts2)
-    dst = cv.warpPerspective(img,M,(1203,2869))
-    pose = np.append(pose,1)
+        self.maze_ros = np.array(maze_bw_flip,np.int8).reshape(-1).tolist()
+        self.width = self.maze_image.shape[1]
+        self.height = self.maze_image.shape[0]
 
 
 
-    pose_transformed = M.dot(np.int16(pose))
+    def homographic(self, img,pose):
 
-    x = np.int16(pose_transformed[0]/pose_transformed[2])
-    y = np.int16(2869 - pose_transformed[1]/pose_transformed[2])
+        #specify the 4 corner coordinates are col row / x y. Row major order (Z shape)
+        pts1 = np.float32([[599,98],[938,104],[72,532],[1275,637]])
+        pts2 = np.float32([[0,0],[1203,0],[0,2869],[1203,2869]])
+        M = cv.getPerspectiveTransform(pts1,pts2)
+        homo_transform = cv.warpPerspective(img,M,(1203,2869))
+        pose = np.append(pose,1)
 
-    dst = cv.circle(dst,[x,y],5,(255,0,0),-1,cv.LINE_4)
 
-    pts1 = np.array([pts1[0],pts1[2],pts1[3],pts1[1]],np.int32)
-    pts1 = pts1.reshape((-1, 1, 2))
-    
-    # img = cv.polylines(img,[pts1],1,[0,0,255],5,cv.LINE_4)
 
-    return dst, [float(x*3.54/1203 ),float(y*3.54/1203) ], [x,y]
+        pose_transformed = M.dot(np.int16(pose))
+
+        self.pose_xy_pixels_homo[0] = np.int16(pose_transformed[0]/pose_transformed[2])
+        self.pose_xy_pixels_homo[1] = np.int16(pose_transformed[1]/pose_transformed[2])
+        self.pose_xy_homo[0] = self.pose_xy_pixels_homo[0]*self.homo_resolution
+        self.pose_xy_homo[1] = (homo_transform.shape[0] - self.pose_xy_pixels_homo[1])*self.homo_resolution
+
+
+
+        homo_transform = cv.circle(homo_transform,self.pose_xy_pixels_homo,5,(255,0,0),-1,cv.LINE_4)
+
+        if self.show_homographic_region:
+            pts1 = np.array([pts1[0],pts1[2],pts1[3],pts1[1]],np.int32)
+            pts1 = pts1.reshape((-1, 1, 2))
+            
+            self.annotated_frame = cv.polylines(self.annotated_frame,[pts1],1,[0,0,255],5,cv.LINE_4)
+
+        return homo_transform
 
 def object_counter(bw_image):
 

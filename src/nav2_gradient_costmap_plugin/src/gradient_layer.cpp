@@ -107,7 +107,7 @@ GradientLayer::updateBounds(
   robot_x_ = robot_x/0.002942643;
   robot_y_ = robot_y/0.002942643;
 
-  RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"), "Pose: %f, %f, Pose 2: %f, %f", robot_x_,robot_y_,robot_x,robot_y);
+  // RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"), "Pose: %f, %f, Pose 2: %f, %f", robot_x_,robot_y_,robot_x,robot_y);
   if (need_recalculation_) {
     last_min_x_ = *min_x;
     last_min_y_ = *min_y;

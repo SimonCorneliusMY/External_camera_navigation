@@ -9,7 +9,7 @@ from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
 from turtlebot3_msgs.msg import Astar
-from rclpy.qos import QoSProfile
+import rclpy.qos
 
 from sensor_msgs.msg import Imu 
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -25,9 +25,14 @@ import time
 
 import csv
 import os
-import ctypes
 
+# 2025/1/2 Issue still persist, navigation is working but high CPU usage
+"""
+[component_container_isolated-1] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
+[component_container_isolated-1]          at line 294 in ./src/buffer_core.cpp
+[component_container_isolated-1] Warning: TF_OLD_DATA ignoring data from the past for frame base_footprint at time 169.561000 according to authority Authority undetectable
 
+"""
 
 
 

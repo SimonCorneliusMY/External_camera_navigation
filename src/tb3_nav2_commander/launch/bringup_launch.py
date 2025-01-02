@@ -106,7 +106,7 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value='/home/tarumt2204/desk_ws/src/tb3_nav2_commander/param/nav2_params.yaml',
+        default_value='/home/tarumt2204/External_camera_navigation/src/tb3_nav2_commander/param/nav2_params.yaml',
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_autostart_cmd = DeclareLaunchArgument(

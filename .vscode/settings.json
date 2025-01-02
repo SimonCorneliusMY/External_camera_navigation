@@ -1,4 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/tarumt2204/ros2_tutorial_ws/src/cpp_planner",
+    "cmake.sourceDirectory": "/home/tarumt2204/External_camera_navigation/src/camera_cpp",
     "C_Cpp.errorSquiggles": "enabled"
 }
