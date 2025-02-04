@@ -6,6 +6,6 @@
 
 # Don't ignore folders that contain 'plugin' in their name
 
-!/build/nav2_gradient_costmap_plugin/**
+
 !/src/**
 
