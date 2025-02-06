@@ -97,16 +97,7 @@ public:
         cv::resizeWindow("image",600,1200);
         cv::resizeWindow("image2",600,1200);
 
-
-
-
-        // qos_profile_reliable = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().transient_local();
-
-        // bounding_box_sub = this->create_subscription<my_custom_msgs::msg::Bbox>(
-        //     "bounding_box", 10, std::bind(&Mapping::bounding_box_callback, this, std::placeholders::_1));
-
-        // image_sub = this->create_subscription<sensor_msgs::msg::Image>(
-        //     "camera/image_raw", 10, std::bind(&Mapping::image_callback, this, std::placeholders::_1));
+        // subscription topic using the sync package
         image_sub.subscribe(this,"camera/image_raw");
         bounding_box_sub.subscribe(this,"bounding_box");
 
@@ -117,10 +108,11 @@ public:
                 message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image,
                 my_custom_msgs::msg::Bbox>(queue_size), image_sub,bounding_box_sub);
 
-
+        // limit of sync mismatch
         sync->setAgePenalty(0.5);
         sync->registerCallback(std::bind(&Mapping::SyncCallback, this, _1, _2));
 
+        // normal ros2 publisher
         map_publisher = this->create_publisher<nav_msgs::msg::OccupancyGrid>("map", qos_profile_reliable);
         obstacle_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("obstacle", qos_profile_reliable);
 
@@ -161,47 +153,47 @@ private:
         }
         
     }
-    void image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
-    {
-        try
-        {
+    // void image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
+    // {
+    //     try
+    //     {
 
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-            // cv::Mat image = br->imgmsg_to_cv2(*msg, "bgr8");
-            if (!bounding_box.empty() && !cv_ptr->image.empty())
-            {
-                mapping(cv_ptr->image, bounding_box);
-                bbox_image_check = true;
+    //         cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+    //         // cv::Mat image = br->imgmsg_to_cv2(*msg, "bgr8");
+    //         if (!bounding_box.empty() && !cv_ptr->image.empty())
+    //         {
+    //             mapping(cv_ptr->image, bounding_box);
+    //             bbox_image_check = true;
 
-            }
-            else if (bbox_image_check == true)
-            {
-                RCLCPP_INFO(this->get_logger(), "No image or bounding box");
-                bbox_image_check = false;
-                return;
-            }
+    //         }
+    //         else if (bbox_image_check == true)
+    //         {
+    //             RCLCPP_INFO(this->get_logger(), "No image or bounding box");
+    //             bbox_image_check = false;
+    //             return;
+    //         }
 
             
             
-        }
-        catch (const cv_bridge::Exception &e)
-        {
-            RCLCPP_ERROR(this->get_logger(), "Error converting image: %s", e.what());
-        }
-    }
+    //     }
+    //     catch (const cv_bridge::Exception &e)
+    //     {
+    //         RCLCPP_ERROR(this->get_logger(), "Error converting image: %s", e.what());
+    //     }
+    // }
 
-    void bounding_box_callback(const my_custom_msgs::msg::Bbox::SharedPtr msg)
-    {
-        bounding_box = msg->data;
+    // void bounding_box_callback(const my_custom_msgs::msg::Bbox::SharedPtr msg)
+    // {
+    //     bounding_box = msg->data;
 
-        // Printing the entire array (elements) 
-        // RCLCPP_INFO(this->get_logger(), "Received data:");
-        //     for (size_t i = 0; i < msg->data.size(); ++i)
-        //     {
-        //         RCLCPP_INFO(this->get_logger(), "Element %zu: %d", i, msg->data[i]);
-        //     }
+    //     // Printing the entire array (elements) 
+    //     // RCLCPP_INFO(this->get_logger(), "Received data:");
+    //     //     for (size_t i = 0; i < msg->data.size(); ++i)
+    //     //     {
+    //     //         RCLCPP_INFO(this->get_logger(), "Element %zu: %d", i, msg->data[i]);
+    //     //     }
 
-    }
+    // }
     // TODO the thresholding has some weird issue where causing the mask to have multiple value
     void mapping(const cv::Mat &image,  std::vector<int16_t> &bounding_box)
     {
@@ -222,10 +214,10 @@ private:
         // Blackout the TurtleBot3 pose, bounding_box is top left and bottom right coordinates, each box requires 4 values
         for (size_t i = 0; i < bounding_box.size(); i += 4)
             {
-                int x = bounding_box[i]-50;
-                int y = bounding_box[i + 1]-50;
-                int width = bounding_box[i + 2] - bounding_box[i]+100;
-                int height = bounding_box[i + 3] - bounding_box[i + 1]+100;
+                int x = bounding_box[i]-TB3_pixel_inflation;
+                int y = bounding_box[i + 1]-TB3_pixel_inflation;
+                int width = bounding_box[i + 2] - bounding_box[i]+TB3_pixel_inflation*2;
+                int height = bounding_box[i + 3] - bounding_box[i + 1]+TB3_pixel_inflation*2;
 
                 // Create a cv::Rect for each bounding box
                 cv::Rect bbox(x, y, width, height);
@@ -239,15 +231,7 @@ private:
         // make it a mask again because interpolation in warpPerspective
         cv::threshold(homo_transform,homo_transform,cv::THRESH_BINARY_INV | cv::THRESH_OTSU,100,cv::ThresholdTypes::THRESH_BINARY_INV);
 
-
-        // cv::imshow("image2",homo_transform);
-        // cv::waitKey(1);
-
-        // Set map values for obstacles and free space
-        // homo_transform.setTo(0,homo_transform==255); // Set obstacle = 100, free path = 0
-        // mask.setTo(0,mask==255);
-
-        // Create a set to store unique values
+        // Create a set to store unique values, keep for checking unique value 250206 Simon
         // std::set<int> uniqueValues;
 
         // // Iterate through each element in the matrix and add it to the set
@@ -289,34 +273,16 @@ private:
         map.data.assign(maze_bw_flip.begin<int8_t>(), maze_bw_flip.end<int8_t>());
         map_publisher->publish(map);
 
-        // RCLCPP_INFO(this->get_logger(), "%d,%d",homo_transform.channels(),maze_bw_flip.channels());
-        // Get an iterator to the end of the unique values
-        // auto unique_end = std::unique(homo_transform.begin<int8_t>(), homo_transform.end<int8_t>());
-        
 
-
-        // // Iterate through the unique values and print them
-        // RCLCPP_INFO(this->get_logger(), "Unique values:");
-
-        // for (auto it = homo_transform.begin<int8_t>(); it != unique_end; ++it) {
-        //     RCLCPP_INFO(this->get_logger(), "%d", *it);
-        // }
-
-
-
-                // Create the PointCloud2 message
-        sensor_msgs::msg::PointCloud2 pointcloud;
         
         // Set the header of the point cloud
-        pointcloud.header.stamp = rclcpp::Clock().now();
-        pointcloud.header.frame_id = "map"; // Set the frame_id for the point cloud
+        obstacle.header.stamp = rclcpp::Clock().now();
+        obstacle.header.frame_id = "map"; // Set the frame_id for the point cloud
         
         // Set height and width of the point cloud
-        pointcloud.height = 1;  // Single row of points (unordered)
+        obstacle.height = 1;  // Single row of points (unordered)
         
-        // Point data (coordinates in 3D space)
-        std::vector<geometry_msgs::msg::Point32> points;
-        
+
         // Iterate through the occupancy grid and add occupied cells (value 100) as points
         const auto& origin = map.info.origin;
         const float resolution = map.info.resolution;
@@ -339,7 +305,7 @@ private:
                 }
             }
         }
-        pointcloud.width = points.size();  // One point for each cell in the grid
+        obstacle.width = points.size();  // One point for each cell in the grid
         // Create PointFields for the point cloud
         std::vector<sensor_msgs::msg::PointField> fields;
 
@@ -366,43 +332,40 @@ private:
         fields.push_back(z_field);
 
         // Assign fields to pointcloud message
-        pointcloud.fields = fields;
+        obstacle.fields = fields;
         
         // Point step (size of one point in bytes)
-        pointcloud.point_step = 12;  // 3 floats (x, y, z), each float is 4 bytes
-        pointcloud.row_step = pointcloud.point_step * points.size();
-        pointcloud.is_bigendian = false; // Little endian
-        pointcloud.is_dense = true; // All points are valid (no NaNs or invalid points)
+        obstacle.point_step = 12;  // 3 floats (x, y, z), each float is 4 bytes
+        obstacle.row_step = obstacle.point_step * points.size();
+        obstacle.is_bigendian = false; // Little endian
+        obstacle.is_dense = true; // All points are valid (no NaNs or invalid points)
         
         // Create a buffer for the point data
-        pointcloud.data.resize(pointcloud.row_step);
+        obstacle.data.resize(obstacle.row_step);
 
         // Fill the data array with point information
         size_t i = 0;
         for (const auto& pt : points)
         {
-        memcpy(&pointcloud.data[i], &pt.x, sizeof(pt.x));  // Copy x
+        memcpy(&obstacle.data[i], &pt.x, sizeof(pt.x));  // Copy x
         i += sizeof(pt.x);
-        memcpy(&pointcloud.data[i], &pt.y, sizeof(pt.y));  // Copy y
+        memcpy(&obstacle.data[i], &pt.y, sizeof(pt.y));  // Copy y
         i += sizeof(pt.y);
-        memcpy(&pointcloud.data[i], &pt.z, sizeof(pt.z));  // Copy z
+        memcpy(&obstacle.data[i], &pt.z, sizeof(pt.z));  // Copy z
         i += sizeof(pt.z);
         }
 
         // Publish the PointCloud2 message
-        obstacle_publisher->publish(pointcloud);
+        obstacle_publisher->publish(obstacle);
 
     }
 
-
-
-
-    // rclcpp::Subscription<my_custom_msgs::msg::Bbox>::SharedPtr bounding_box_sub;
-    // rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr map_publisher;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr obstacle_publisher;
-
+    
+    
     sensor_msgs::msg::PointCloud2 obstacle;
+    std::vector<geometry_msgs::msg::Point32> points;
     nav_msgs::msg::OccupancyGrid map;
     std::shared_ptr<cv_bridge::CvImage> br;
     std::shared_ptr<FPSCounter> fps_counter;
@@ -418,6 +381,7 @@ private:
     std::vector<cv::Point2f> pts1;
     std::vector<cv::Point2f> pts2;
     FPSCounter counter;
+    int TB3_pixel_inflation = 50;   //erases the surrounding pixels
 
     message_filters::Subscriber<my_custom_msgs::msg::Bbox> bounding_box_sub;
     message_filters::Subscriber<sensor_msgs::msg::Image> image_sub;
@@ -425,12 +389,6 @@ private:
     std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<
         sensor_msgs::msg::Image, my_custom_msgs::msg::Bbox>>> sync;
 
-
-    // my_custom_msgs::msg::Bbox bounding_box;
-    
-
-    
-    // rclcpp::QoS qos_profile_reliable;
 };
 
 int main(int argc, char **argv)
