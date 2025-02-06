@@ -10,15 +10,21 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(my_custom_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(rmw)
+find_package(message_filters REQUIRED)
 
-add_executable(mapping_sim_cpp src/mapping_sim_cpp.cpp)
-ament_target_dependencies(mapping_sim_cpp rclcpp OpenCV sensor_msgs cv_bridge nav_msgs std_msgs rmw)
+add_executable(mapping_sim_cpp src/mapping_sim_top_down_cpp.cpp)
+ament_target_dependencies(mapping_sim_cpp rclcpp OpenCV sensor_msgs cv_bridge nav_msgs std_msgs rmw my_custom_msgs)
+
+add_executable(mapping_real_cpp src/mapping_real_cpp.cpp)
+ament_target_dependencies(mapping_real_cpp rclcpp OpenCV sensor_msgs cv_bridge nav_msgs std_msgs rmw message_filters my_custom_msgs)
 
 install(TARGETS
   mapping_sim_cpp
+  mapping_real_cpp
   DESTINATION lib/${PROJECT_NAME}
 )
 # uncomment the following section in order to fill in
