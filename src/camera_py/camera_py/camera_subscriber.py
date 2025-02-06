@@ -23,7 +23,7 @@ class CameraSubscriber(Node):
         # Subscriber for the image topic, replace 'camera/image' with your topic name
         self.subscription = self.create_subscription(
             Image,
-            '/camera/image',  # Adjust to your camera topic
+            '/camera/image_raw',  # Adjust to your camera topic
             self.listener_callback,
             policy_best_effort
         )
