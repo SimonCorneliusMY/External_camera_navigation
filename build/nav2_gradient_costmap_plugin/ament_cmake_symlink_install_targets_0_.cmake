@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/home/tarumt2204/External_camera_navigation/build/nav2_gradient_costmap_plugin/libnav2_gradient_costmap_plugin_core.so" "TARGETS" "nav2_gradient_costmap_plugin_core" "DESTINATION" "lib")
