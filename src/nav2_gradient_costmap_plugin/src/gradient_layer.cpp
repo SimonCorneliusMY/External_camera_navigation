@@ -93,6 +93,8 @@ void GradientLayer::mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr ms
   // Access the map dimensions
   width = msg->info.width;
   height = msg->info.height;
+  resolution = msg->info.resolution;
+  
 
 }
 
@@ -104,8 +106,9 @@ GradientLayer::updateBounds(
   double robot_x, double robot_y, double /*robot_yaw*/, double * min_x,
   double * min_y, double * max_x, double * max_y)
 {
-  robot_x_ = robot_x/0.002942643;
-  robot_y_ = robot_y/0.002942643;
+  // conversion from pixel coordinate to meters for real life
+  robot_x_ = robot_x/resolution; // 3.54/1203
+  robot_y_ = robot_y/resolution;
 
   // RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"), "Pose: %f, %f, Pose 2: %f, %f", robot_x_,robot_y_,robot_x,robot_y);
   if (need_recalculation_) {
@@ -205,10 +208,14 @@ GradientLayer::updateCosts(
   //   }
   // }  
   // determine the boundary of the global map
-  min_x = robot_x_ - 784 / 2;
-  max_x = robot_x_ + 784 / 2;
-  min_y = robot_y_ - 784 / 2;
-  max_y = robot_y_ + 784 / 2;
+  float boundary = 3/resolution/2;
+  float local_pixel_length = 3/resolution;
+
+  // RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"),"%f,%f",boundary,local_pixel_length);
+  min_x = robot_x_ - boundary;
+  max_x = robot_x_ + boundary;
+  min_y = robot_y_ - boundary;
+  max_y = robot_y_ + boundary;
 
   // determining the local costmap boundary to update
   if(min_x < 0){
@@ -223,14 +230,14 @@ GradientLayer::updateCosts(
     min_j = 0;
   }  
   if (max_x > width){
-    max_i = 784 - max_x + width;
+    max_i = local_pixel_length - max_x + width;
   }else{
-    max_i = 784;
+    max_i = local_pixel_length;
   }
   if (max_y > height){
-    max_j = 784 - max_y + height;
+    max_j = local_pixel_length - max_y + height;
   }else{
-    max_j = 784;
+    max_j = local_pixel_length;
   }
 
   for (int j = min_j; j < max_j; j++) {
@@ -239,8 +246,10 @@ GradientLayer::updateCosts(
         // Get the corresponding 1D index for (i, j) position
         int index = master_grid.getIndex(i, j);
         // setting the bounds of costmap update
-
-        master_array[index] = latest_map_->data[((j+min_y) * width) + i + min_x];  
+        if(latest_map_->data[((j+min_y) * width) + i + min_x] == 100){
+          master_array[index] = LETHAL_OBSTACLE; 
+        }
+         
 
     }
   } 

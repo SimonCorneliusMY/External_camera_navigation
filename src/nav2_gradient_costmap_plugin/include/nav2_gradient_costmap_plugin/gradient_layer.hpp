@@ -85,6 +85,8 @@ private:
   nav_msgs::msg::OccupancyGrid::SharedPtr latest_map_;
   int width ;
   int height ;
+  float resolution;
+  
   
   // Access the 1D occupancy grid data
   std::vector<int8_t> map_data ;
