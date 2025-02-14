@@ -114,6 +114,6 @@ def generate_launch_description():
     ld.add_action(robot_state_publisher_cmd)
     ld.add_action(spawn_turtlebot_cmd)
     # ld.add_action(my_turtlebot3_drive)
-    ld.add_action(my_localizer)    #node are executed first before launch file, hence nodes need to be able to wait for input
+    # ld.add_action(my_localizer)    #node are executed first before launch file, hence nodes need to be able to wait for input
 
     return ld

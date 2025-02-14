@@ -37,12 +37,18 @@
               <size>100 100</size>
             </plane>
           </geometry>
-          <material>
+          
+          <material>    
             <script>
               <uri>file://media/materials/scripts/gazebo.material</uri>
               <name>Gazebo/Grey</name>
             </script>
           </material>
+          <!-- <material>
+            <ambient>0.945 0.831 0.682 1</ambient>
+            <diffuse>0.945 0.831 0.682 1</diffuse>
+            <specular>0.945 0.831 0.682 1</specular>
+          </material> -->
         </visual>
         <self_collide>0</self_collide>
         <enable_wind>0</enable_wind>

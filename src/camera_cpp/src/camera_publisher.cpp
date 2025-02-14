@@ -12,15 +12,18 @@ public:
     WebcamPublisher()
         : Node("webcam_publisher"), cap_(0, cv::CAP_V4L2) {
 
+        this->declare_parameter<bool>("view_feed", false);
+        
+
         rclcpp::QoS profile(rclcpp::KeepLast(10));
-        profile.best_effort();
+        profile.reliable();
         // Create the image publisher and FPS publisher
-        image_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("camera/image", profile);
+        image_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("camera/image_raw", profile);
         fps_publisher_ = this->create_publisher<std_msgs::msg::Int32>("fps", 10);
 
         // Set up a timer to run the callback at 10Hz (every 100 ms)
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(33), std::bind(&WebcamPublisher::timer_callback, this));
+            std::chrono::milliseconds(10), std::bind(&WebcamPublisher::timer_callback, this));
         
 
         // Open the default webcam
@@ -40,9 +43,13 @@ public:
 
 private:
     void timer_callback() {
+        auto now = std::chrono::steady_clock::now();
         // Capture a frame from the webcam
+        bool view_feed = this -> get_parameter("view_feed").get_value<bool>();
+
 
         cap_ >> frame;
+
 
         if (frame.empty()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to capture image.");
@@ -54,7 +61,14 @@ private:
         auto image_ptr = std::make_shared<sensor_msgs::msg::Image>(*ros_image);
   
         // Publish the image
+        image_ptr->header.stamp = rclcpp::Clock().now();
         image_publisher_->publish(*image_ptr);
+
+        if (view_feed == true){
+            cv::imshow("Camera feed", frame);
+            cv::waitKey(1);
+        }
+        
 
         // Log the first publish
         if (first_publish_) {
@@ -63,12 +77,11 @@ private:
         }
 
         // Calculate FPS based on the time elapsed since the last frame
-        auto now = std::chrono::steady_clock::now();
+        
         std::chrono::duration<double> elapsed = now - last_time_;
         double fps = 1.0 / elapsed.count();
 
-
-             
+        
         // Publish FPS
         std_msgs::msg::Int32 fps_msg;
         fps_msg.data = static_cast<int32_t>(fps);
@@ -78,6 +91,8 @@ private:
         // Update last_time_ to the current time
         last_time_ = now;
     }
+
+
 
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr fps_publisher_;

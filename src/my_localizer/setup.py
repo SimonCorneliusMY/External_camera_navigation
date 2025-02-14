@@ -22,6 +22,8 @@ setup(
         'console_scripts': [
             'my_localizer = my_localizer.my_localizer:main',
             'my_localizer_real = my_localizer.my_localizer_real:main',
+            'localizer_sim = my_localizer.localizer_sim:main',
+            'localizer_real = my_localizer.localizer_real:main',
         ],
     },
 )

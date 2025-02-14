@@ -1,19 +1,15 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "build",
-      "type": "shell",
-      "command": "colcon",  // Path to g++ (you can adjust if needed)
-      "args": [
-        "build","--packages-select","camera_cpp"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "problemMatcher": ["$gcc"],
-      "detail": "Generated task by Debugger"
-    }
-  ]
+    "tasks": [
+
+        {
+            "type": "shell",
+            "label": "source files",
+            "command": "source ${workspaceFolder}/install/setup.bash && source ~/.bashrc && unset GTK_PATH" ,
+            "problemMatcher": [],
+            "group": "none",
+            "isBackground": false,
+
+        }
+    ],
+    "version": "2.0.0"
 }

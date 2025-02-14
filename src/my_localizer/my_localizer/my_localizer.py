@@ -13,6 +13,7 @@ import rclpy.qos
 
 from sensor_msgs.msg import Imu 
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from nav_msgs.msg import Path
 
  
 
@@ -66,7 +67,7 @@ class top_camera(LifecycleNode):
         
         self.br = CvBridge()
 
-
+        self.heading = self.create_publisher(Path,"heading",10)
         #self.map = StaticTransformBroadcaster(self,qos_policy)
         self.localization_tf = TransformBroadcaster(self)
         self.timer = self.create_timer(0.01,self.broadcast_transform)
@@ -136,8 +137,8 @@ class top_camera(LifecycleNode):
         pose, maze_bw = self.colour_localization_mapping()
 
 
-        maze_bw[maze_bw==0] = 100   #255 is obstacle and change to 1 for costmap
-        maze_bw[maze_bw==255] = 0
+        maze_bw[maze_bw==0] = 100   #100 is obstacle
+        maze_bw[maze_bw==255] = 0   #0 is free path
         
 
         map.header.frame_id = 'map'
@@ -158,13 +159,8 @@ class top_camera(LifecycleNode):
         maze_bw_flip = cv.flip(maze_bw,0)   #flip horizontally opencv data is origin is top left while map data is bottom left
         maze_bw_flip_list = np.array(maze_bw_flip,np.int8).reshape(-1).tolist()    #row major order, and make sure values are int8
 
-        # cv.imshow("crop image",maze_bw)
-        # cv.imshow("flip image",maze_bw_flip)
-
         map.data = maze_bw_flip_list
 
-
-        
         self.map_publisher.publish(map)
 
 
@@ -210,8 +206,11 @@ class top_camera(LifecycleNode):
         # cv.imshow('camera',self.current_frame)
         # cv.waitKey(1)    
 
-    def imu_callback(self,data):
+    def imu_callback(self,data:Imu):
         self.imu_data= data
+        xyz = euler_from_quaternion(data.orientation.x,data.orientation.y,data.orientation.z,data.orientation.w)
+        print(xyz)
+
         
     def broadcast_transform(self):
         # x= 1.0    #meter
@@ -233,28 +232,6 @@ class top_camera(LifecycleNode):
         map_to_odom.transform.rotation.z = 0.0
         map_to_odom.transform.rotation.w = 1.0
         self.localization_tf.sendTransform(map_to_odom)
-
-    def localization_yolov8(self):
-        #set confidence to 0.7
-        results = self.model.track(self.current_frame,conf = 0.7)
-        #annotate image with bounding box no labels
-        annotated_frame = results[0].plot(labels=False)
-        #get the coordinates of the bounding box [top_left:row col , bottom_right: row col]
-        tb3_box_TLBR = np.array(results[0].boxes.xyxy).reshape(-1)
-
-        #if object detected then get the pose
-        if len(tb3_box_TLBR) != 0:
-            
-            tb3_pose = np.empty((2,),np.int16)
-            #middle point of x/column
-            tb3_pose[0] = (tb3_box_TLBR[0]+tb3_box_TLBR[2])/2
-            #get the lower higher point of the y/row (because 0,0 is top left)
-            tb3_pose[1] = tb3_box_TLBR[3]
-            #draw dot of pose
-            annotated_frame = cv.circle(annotated_frame,tb3_pose,5,(255,0,0),-1,cv.LINE_8,)
-
-            #print("Here :",results[0].boxes.xyxy, "TB3 pose: ", tb3_pose)
-        return tb3_pose
     
     def colour_localization_mapping(self):
         default_pose = np.array([1.0,1.0])
@@ -310,21 +287,6 @@ class top_camera(LifecycleNode):
             return blue_rowcol*4/1044, maze  #4m = 1044 pixels, blue_rowcol is in pixels
         
         return default_pose, default_maze
-
-
-    def service_callback(self,request,response):        #14/6/2024 creating a client service connection between astarservice node and teleop node
-        print(request)
-        #response = 'Recevived request %d' % response
-        
-        if request.value == "request A*":
-            print(1)
-            response = astarservice(response)
-            return response
-        print(2)
-        return "Invalid"
-    
-    def motionsubscription_callback(self,data):
-        print(data)
 
 def mapping(image:np.ndarray,point: list[int], size: int)->np.ndarray:
     #threshold values to isolate floor TODO: pass in as parameter

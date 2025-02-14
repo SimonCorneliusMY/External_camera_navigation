@@ -97,6 +97,7 @@ def generate_launch_description():
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
+        default_value='/home/tarumt2204/External_camera_navigation/map.yaml',
         description='Full path to map yaml file to load')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -106,8 +107,10 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value='/home/tarumt2204/desk_ws/src/tb3_nav2_commander/param/nav2_params.yaml',
+        default_value='/home/tarumt2204/External_camera_navigation/src/tb3_nav2_commander/params/nav2_params_sim_241205.yaml',
         description='Full path to the ROS2 parameters file to use for all launched nodes')
+   
+
 
     declare_autostart_cmd = DeclareLaunchArgument(
         'autostart', default_value='true',
@@ -140,12 +143,7 @@ def generate_launch_description():
             arguments=['--ros-args', '--log-level', log_level],
             remappings=remappings,
             output='screen'),
-        # Node(
-        #     package='robot_localization',
-        #     executable='ekf_node',
-        #     name='ekf_filter_node',
-        #     output='screen',
-        #     parameters=['/home/tarumt2204/my_ekf.yaml'],),            
+           
            
 
 

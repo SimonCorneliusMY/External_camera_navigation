@@ -1,26 +1,85 @@
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo
-from launch_ros.actions import Node
+from ament_index_python.resources import has_resource
 
-def generate_launch_description():
-    return LaunchDescription([
-        # Declare launch arguments
-        DeclareLaunchArgument('image_width', default_value='1280'),
-        DeclareLaunchArgument('image_height', default_value='720'),
+from launch.actions import DeclareLaunchArgument
+from launch.launch_description import LaunchDescription
+from launch.substitutions import LaunchConfiguration
 
-        
-        # Launch usb_cam node with parameters
-        Node(
-            package='usb_cam',
-            executable='usb_cam_node_exe',
-            name='usb_cam',
+from launch_ros.actions import ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
+
+
+def generate_launch_description() -> LaunchDescription:
+    """
+    Generate a launch description with for the camera node and a visualiser.
+
+    Returns
+    -------
+        LaunchDescription: the launch description
+
+    """
+    # parameters
+    camera_param_name = "camera"
+    camera_param_default = str(0)
+    camera_param = LaunchConfiguration(
+        camera_param_name,
+        default=camera_param_default,
+    )
+    camera_launch_arg = DeclareLaunchArgument(
+        camera_param_name,
+        default_value=camera_param_default,
+        description="camera ID or name"
+    )
+
+    format_param_name = "format"
+    format_param_default = str()
+    format_param = LaunchConfiguration(
+        format_param_name,
+        default=format_param_default,
+    )
+    format_launch_arg = DeclareLaunchArgument(
+        format_param_name,
+        default_value=format_param_default,
+        description="pixel format"
+    )
+
+    # camera node
+    composable_nodes = [
+        ComposableNode(
+            package='camera_ros',
+            plugin='camera::CameraNode',
             parameters=[{
-                'pixel_format':'raw_mjpeg',
-                'framerate': 30.0,
-                'image_width': 1280,
-                'image_height': 720
+                "camera": camera_param,
+                "width": 1280,
+                "height": 720,
+                "format": format_param,
             }],
-            output='screen'
+            extra_arguments=[{'use_intra_process_comms': True}],
         ),
-    ])
 
+    ]
+
+    # optionally add ImageViewNode to show camera image
+    if has_resource("packages", "image_view"):
+        composable_nodes += [
+            ComposableNode(
+                package='image_view',
+                plugin='image_view::ImageViewNode',
+                remappings=[('/image', '/camera/image_raw')],
+                extra_arguments=[{'use_intra_process_comms': True}],
+            ),
+        ]
+
+    # composable nodes in single container
+    container = ComposableNodeContainer(
+        name='camera_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=composable_nodes,
+    )
+
+    return LaunchDescription([
+        container,
+        camera_launch_arg,
+        format_launch_arg,
+    ])

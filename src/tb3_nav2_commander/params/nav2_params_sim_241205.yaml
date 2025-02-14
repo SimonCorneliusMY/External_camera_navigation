@@ -194,15 +194,15 @@ local_costmap:
       height: 3
       resolution: 0.00383142
       robot_radius: 0.22
-      plugins: ["voxel_layer", "gradient_layer"]
-      #plugins: ["gradient_layer"]
+      plugins: ["voxel_layer", "gradient_layer", inflation_layer]
       gradient_layer:
         plugin: nav2_gradient_costmap_plugin1/GradientLayer
         enabled: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        inflation_radius: 10.0
+        enabled: True
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -212,7 +212,7 @@ local_costmap:
         z_voxels: 16
         max_obstacle_height: 2.0
         mark_threshold: 0
-        #observation_sources: scan
+        # observation_sources: scan
         scan:
           topic: /scan
           max_obstacle_height: 2.0

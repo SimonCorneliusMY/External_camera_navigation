@@ -1,22 +1,29 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "browse": {
+                "databaseFilename": "${default}",
+                "limitSymbolsToIncludedHeaders": false
+            },
             "includePath": [
-                "${workspaceFolder}/**",
-                "/opt/ros/humble/**",
-                "/opt/ros/humble/share/ament_index/resource_index/package_run_dependencies",
-                "/opt/ros/humble/include",
-                "${workspaceFolder}/src/nav2_gradient_costmap_plugin/**",
-                "${workspaceFolder}/src/nav2_gradient_costmap_plugin/include/**",
-                "/usr/include/opencv4"
+                "/home/tarumt2204/External_camera_navigation/install/turtlebot3_fake_node/include/**",
+                "/home/tarumt2204/External_camera_navigation/install/turtlebot3_msgs/include/**",
+                "/home/tarumt2204/External_camera_navigation/install/turtlebot3_gazebo/include/**",
+                "/home/tarumt2204/External_camera_navigation/install/my_custom_msgs/include/**",
+                "/opt/ros/humble/include/**",
+                "/home/tarumt2204/External_camera_navigation/src/TB3_main/turtlebot3_simulations/turtlebot3_fake_node/include/**",
+                "/home/tarumt2204/External_camera_navigation/src/TB3_main/turtlebot3_simulations/turtlebot3_gazebo/include/**",
+                "/home/tarumt2204/External_camera_navigation/src/my_custom_msgs/include/**",
+                "/home/tarumt2204/External_camera_navigation/src/nav2_gradient_costmap_plugin/include/**",
+                "/home/tarumt2204/External_camera_navigation/src/test/include/**",
+                "/usr/include/opencv4",
+                "/opt/ros/humble/include/rclcpp"
             ],
-            "defines": [],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
             "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c17",
-            "cppStandard": "gnu++17",
-            "intelliSenseMode": "linux-gcc-x64",
-            "configurationProvider": "ms-vscode.cmake-tools"
+            "cStandard": "gnu11",
+            "cppStandard": "c++14"
         }
     ],
     "version": 4

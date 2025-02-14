@@ -1,4 +1,22 @@
 {
-    "cmake.sourceDirectory": "/home/tarumt2204/External_camera_navigation/src/camera_cpp",
-    "C_Cpp.errorSquiggles": "enabled"
+    "python.autoComplete.extraPaths": [
+        "/home/tarumt2204/External_camera_navigation/**",
+
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages",
+        "/home/tarumt2204/External_camera_navigation/install/my_custom_msgs/local/lib/python3.10/dist-packages"
+    ],
+    "cmake.sourceDirectory": [
+        "/home/tarumt2204/External_camera_navigation/src/mapping_cpp",
+        "/home/tarumt2204/External_camera_navigation/src/my_custom_msgs",
+        "/home/tarumt2204/External_camera_navigation/src/camera_cpp",
+        "/home/tarumt2204/External_camera_navigation/src/nav2_gradient_costmap_plugin"
+    ],
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "terminal.integrated.env.linux": {
+        "GTK_PATH": ""
+    },
+    "ros2.additionalSearchDirs": [
+        "/home/tarumt2204/External_camera_navigation/**"
+    ]
 }

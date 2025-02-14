@@ -33,10 +33,10 @@ class CameraPublisher(Node):
 
         self.fps = FPSCounter()
         #param
-        self.declare_parameter('view_camera',False)
-        self.view_cam_feed = self.get_parameter('view_camera').get_parameter_value().bool_value
+        self.declare_parameter('view_feed',False)
+        self.view_cam_feed = self.get_parameter('view_feed').get_parameter_value().bool_value
         # Create a publisher for Image messages
-        self.publisher_ = self.create_publisher(Image, 'camera/image', qos_policy)
+        self.publisher_ = self.create_publisher(Image, 'camera/image_raw', qos_policy)
         self.fps_publisher = self.create_publisher(Int32, 'camera/fps', 10)
         # Create a timer to publish images at 30Hz
         self.timer = self.create_timer(0.033, self.timer_callback)  

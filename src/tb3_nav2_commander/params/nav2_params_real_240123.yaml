@@ -113,7 +113,7 @@ bt_navigator_navigate_to_pose_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time: True
-    controller_frequency: 13.0
+    controller_frequency: 10.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.001
@@ -194,8 +194,7 @@ local_costmap:
       height: 3
       resolution: 0.002942643
       robot_radius: 0.22
-      plugins: ["voxel_layer", "gradient_layer"]
-      #plugins: ["gradient_layer"]
+      plugins: ["voxel_layer","gradient_layer",inflation_layer]
       gradient_layer:
         plugin: nav2_gradient_costmap_plugin1/GradientLayer
         enabled: True
@@ -203,6 +202,20 @@ local_costmap:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.55
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: /obstacle
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "PointCloud2"
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -210,15 +223,15 @@ local_costmap:
         origin_z: 0.0
         z_resolution: 0.05
         z_voxels: 16
-        max_obstacle_height: 2.0
+        max_obstacle_height: 0.0
         mark_threshold: 0
-        #observation_sources: scan
+        # observation_sources: scan
         scan:
-          topic: /scan
+          topic: /obstacle
           max_obstacle_height: 2.0
           clearing: True
           marking: True
-          data_type: "LaserScan"
+          data_type: "PointCloud2"
           raytrace_max_range: 3.0
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
@@ -246,13 +259,13 @@ global_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        #observation_sources: scan
+        observation_sources: scan
         scan:
-          topic: /scan
+          topic: /obstacle
           max_obstacle_height: 2.0
           clearing: True
           marking: True
-          data_type: "LaserScan"
+          data_type: "PointCloud2"
           raytrace_max_range: 3.0
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
