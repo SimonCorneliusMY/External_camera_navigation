@@ -12,7 +12,9 @@ from std_msgs.msg import Int16MultiArray
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 
-
+# switch over to localizer_real for both simulation and real
+# this package works by isolating blue and green (both colour must be present or you can edit line 125) 
+# works with mapping_sim package
 class localizer(Node):
 
     def __init__(self):
