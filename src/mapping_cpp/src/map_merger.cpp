@@ -147,6 +147,8 @@ private:
         // Set the merged map height and width
         merged_map.info.set__height(static_cast<unsigned int>(std::round(height)));
         merged_map.info.set__width(static_cast<unsigned int>(std::round(width)));
+        merged_map.info.origin.position.set__x(min_x*resolution);
+        merged_map.info.origin.position.set__y(min_y*resolution);
         merged_map_cv = cv::Mat(merged_map.info.height,merged_map.info.width, CV_8UC1, cv::Scalar(255));
         RCLCPP_INFO(this->get_logger(),"Width: %d , Height: %d", merged_map.info.width,merged_map.info.height);
     }
@@ -172,23 +174,23 @@ private:
                     tf2::doTransform(point_in_map, point_in_world, transform);
 
                     // Get transformed coordinates
-                    int new_x = static_cast<int>(point_in_world.x );
-                    int new_y = static_cast<int>(point_in_world.y );
+                    int new_x = static_cast<int>(point_in_world.x - merged_map.info.origin.position.x/resolution);
+                    int new_y = static_cast<int>(point_in_world.y - merged_map.info.origin.position.y/resolution);
 
                     // Ensure indices are within bounds
                     if (new_x >= 0 && new_x < merged_map_cv.cols && new_y >= 0 && new_y < merged_map_cv.rows) {
-                            // Get the occupancy value and set the transformed map
-                            int index = i * width + j;
-                            // Use AND logic to combine free space to existing merged map
-                            if (merged_map_cv.at<uchar>(new_y,new_x) == 0 && map.data[index] == 0){
-                                merged_map_cv.at<uchar>(new_y,new_x) = 0;
-                            }else{
-                                merged_map_cv.at<uchar>(new_y,new_x) = map.data[index];
-                            }
-
+                        // Get the occupancy value and set the transformed map
+                        int index = i * width + j;
+                        // Use AND logic to combine free space to existing merged map
+                        if (merged_map_cv.at<uchar>(new_y,new_x) == 0 && map.data[index] == 0){
+                            merged_map_cv.at<uchar>(new_y,new_x) = 0;
+                        }else{
+                            merged_map_cv.at<uchar>(new_y,new_x) = map.data[index];
                         }
+
                     }
                 }
+            }
         }
     // Function to wait for a transform to become available
     bool waitForTransform(const std::string &camera_address, const std::string &target_frame, const std::string &source_frame, std::chrono::seconds timeout)
