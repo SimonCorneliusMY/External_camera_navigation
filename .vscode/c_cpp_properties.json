@@ -17,7 +17,8 @@
                 "/home/tarumt2204/External_camera_navigation/src/nav2_gradient_costmap_plugin/include/**",
                 "/home/tarumt2204/External_camera_navigation/src/test/include/**",
                 "/usr/include/opencv4",
-                "/opt/ros/humble/include/rclcpp"
+                "/usr/include/pcl-1.12/**",
+                "/usr/include/eigen3"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",
