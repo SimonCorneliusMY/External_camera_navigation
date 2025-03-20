@@ -1,0 +1,261 @@
+#include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <unordered_map>
+#include <string>
+#include <memory>
+#include <opencv2/opencv.hpp>
+class MapMergerNode : public rclcpp::Node
+{
+public:
+    MapMergerNode() : Node("map_merger_node")
+    {
+        // Initialize tf2 buffer and listener
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+        this->declare_parameter<double>("resolution", 3.45787/980);
+        this->declare_parameter<std::vector<std::string>>("camera_addresses", {"0","1"});
+        this->get_parameter("camera_addresses",camera_addresses_);
+        this->get_parameter("resolution", resolution);
+
+        // merged map parameters
+        merged_map.header.frame_id = "map";  // Use reference frame
+        merged_map.info.resolution = resolution;  // Assume same resolution for both maps
+        merged_map.info.origin.position.x = 0.0;
+        merged_map.info.origin.position.y = 0.0;
+        merged_map.info.origin.position.z = 0.0;
+        merged_map.info.origin.orientation.w = 1.0;  // Identity quaternion
+
+        // merged_map_cv = cv::Mat(2266,980, CV_8UC1, cv::Scalar(255));
+
+        // Set QoS profile
+        rclcpp::QoS qos_profile_reliable(rclcpp::KeepLast(1));
+        qos_profile_reliable.transient_local();
+        qos_profile_reliable.reliable();
+
+        // Create publisher for the merged map
+        merged_map_publisher_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+            "map", qos_profile_reliable);
+
+        // Create timer to control publishing of merged map
+        timer_ptr_ = this->create_wall_timer(std::chrono::milliseconds(500),std::bind(&MapMergerNode::timer_callback, this));
+
+        // Subscribe to map topics dynamically based on the camera addresses
+        for (const auto &camera_address : camera_addresses_)
+        {
+            std::string topic_name = "/map_" + camera_address;  // Generate topic name dynamically
+            RCLCPP_INFO(this->get_logger(), "Subscribing to %s", topic_name.c_str());
+            
+            auto callback = [this, camera_address](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+                this->mapCallback(msg, camera_address);
+            };
+            
+            subscriptions_[camera_address] = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+                topic_name, 10, callback);
+            
+            // Try to get maps static transform for 10secs
+            if (!waitForTransform(camera_address,"map", "map_" + camera_address, std::chrono::seconds(10)))
+            {
+                RCLCPP_ERROR(this->get_logger(), "Failed to get static transform for camera %s. Shutting down.", camera_address.c_str());
+                rclcpp::shutdown();
+                return;
+            }
+            
+
+        }
+
+        
+    }
+
+private:
+
+    void mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg, const std::string &camera_address)
+    {
+        // Store the received map
+        maps_[camera_address] = *msg;
+    }
+    void timer_callback(){
+
+        // Check number of maps stored is same as number of cameras
+        if (maps_.size() != camera_addresses_.size()){
+            RCLCPP_INFO(this->get_logger(),"Maps stored: %ld but camera addresses: %ld", maps_.size(),camera_addresses_.size());
+            return;
+        }
+
+        // Check if data size is same as map dimensions or dimensions is zero, ideally runs once
+        if (merged_map.info.height*merged_map.info.width != merged_map.data.size() || merged_map.info.height == 0){
+            get_merged_map_size();
+        }
+        // merge maps
+        mergeMaps();
+
+    }
+
+    void mergeMaps()
+    {
+
+        // Loop through stored maps and merges them
+        for(const auto& map:maps_){
+            transform_map(map.second,transforms_[map.first]);
+        }
+
+        // Fill in merged map parameters and publish     
+        merged_map.header.stamp = this->now();
+        merged_map.data.assign(merged_map_cv.begin<int8_t>(), merged_map_cv.end<int8_t>());
+        merged_map_publisher_->publish(merged_map);
+
+    }
+
+    void get_merged_map_size() {
+
+    
+        double min_x = std::numeric_limits<double>::max();
+        double min_y = std::numeric_limits<double>::max();
+        double max_x = std::numeric_limits<double>::lowest();
+        double max_y = std::numeric_limits<double>::lowest();
+        std::vector<geometry_msgs::msg::Point> points(4);
+        for(auto& map:maps_){
+            double h = map.second.info.height;
+            double w = map.second.info.width;
+        
+            points[0].set__x(0.0); points[0].set__y(0.0); points[0].set__z(0.0);  // Bottom-left
+            points[1].set__x(0.0); points[1].set__y(h); points[1].set__z(0.0);    // Top-left
+            points[2].set__x(w); points[2].set__y(0.0); points[2].set__z(0.0);    // Bottom-right
+            points[3].set__x(w); points[3].set__y(h); points[3].set__z(0.0);      // Top-right
+        
+            for (auto& pt : points) {
+                geometry_msgs::msg::Point transformed_pt;
+                // Apply static transform
+                tf2::doTransform(pt, transformed_pt, transforms_[map.first]);
+                // Keep track of min and max points
+                min_x = std::min(min_x, transformed_pt.x);
+                min_y = std::min(min_y, transformed_pt.y);
+                max_x = std::max(max_x, transformed_pt.x);
+                max_y = std::max(max_y, transformed_pt.y);
+            }
+        }
+            // Transform all four corners and find the bounding box
+
+    
+        // Compute final width and height of the merged map and assign to merged_map
+        double width = max_x - min_x;
+        double height = max_y - min_y;
+
+        // Set the merged map height and width
+        merged_map.info.set__height(static_cast<unsigned int>(std::round(height)));
+        merged_map.info.set__width(static_cast<unsigned int>(std::round(width)));
+        merged_map_cv = cv::Mat(merged_map.info.height,merged_map.info.width, CV_8UC1, cv::Scalar(255));
+        RCLCPP_INFO(this->get_logger(),"Width: %d , Height: %d", merged_map.info.width,merged_map.info.height);
+    }
+    
+    void transform_map(const nav_msgs::msg::OccupancyGrid& map,
+         geometry_msgs::msg::TransformStamped& transform)
+    {
+        // Define the grid's dimensions and resolution
+        int width = map.info.width;
+        int height = map.info.height;
+
+        // Create a geometry_msgs Point to apply the transform
+        geometry_msgs::msg::Point point_in_map;
+        geometry_msgs::msg::Point point_in_world;
+            // Iterate through each point in the map and transform it
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+              
+                    point_in_map.x = j;
+                    point_in_map.y = i;
+
+                    // Transform the point
+                    tf2::doTransform(point_in_map, point_in_world, transform);
+
+                    // Get transformed coordinates
+                    int new_x = static_cast<int>(point_in_world.x );
+                    int new_y = static_cast<int>(point_in_world.y );
+
+                    // Ensure indices are within bounds
+                    if (new_x >= 0 && new_x < merged_map_cv.cols && new_y >= 0 && new_y < merged_map_cv.rows) {
+                            // Get the occupancy value and set the transformed map
+                            int index = i * width + j;
+                            // Use AND logic to combine free space to existing merged map
+                            if (merged_map_cv.at<uchar>(new_y,new_x) == 0 && map.data[index] == 0){
+                                merged_map_cv.at<uchar>(new_y,new_x) = 0;
+                            }else{
+                                merged_map_cv.at<uchar>(new_y,new_x) = map.data[index];
+                            }
+
+                        }
+                    }
+                }
+        }
+    // Function to wait for a transform to become available
+    bool waitForTransform(const std::string &camera_address, const std::string &target_frame, const std::string &source_frame, std::chrono::seconds timeout)
+    {
+        auto start = std::chrono::steady_clock::now();
+        while (rclcpp::ok())
+        {
+            try
+            {
+                // Try to get the transform
+                transforms_[camera_address] = tf_buffer_->lookupTransform(target_frame, source_frame, tf2::TimePointZero);
+                transforms_[camera_address].transform.translation.x = transforms_[camera_address].transform.translation.x / resolution;
+                transforms_[camera_address].transform.translation.y = transforms_[camera_address].transform.translation.y / resolution;
+                transforms_[camera_address].transform.translation.z = transforms_[camera_address].transform.translation.z / resolution;
+                return true; // Transform found
+            }
+            catch (const tf2::TransformException &e)
+            {
+                RCLCPP_WARN(this->get_logger(), "Waiting for transform %s -> %s: %s", source_frame.c_str(), target_frame.c_str(), e.what());
+            }
+
+            // Check if timeout reached
+            auto now = std::chrono::steady_clock::now();
+            if (now - start > timeout)
+            {
+                RCLCPP_ERROR(this->get_logger(), "Timeout waiting for transform %s -> %s", source_frame.c_str(), target_frame.c_str());
+                return false; // Timeout reached
+            }
+
+            // Sleep briefly before retrying
+            rclcpp::sleep_for(std::chrono::milliseconds(1000));
+        }
+
+        return false; // In case of an unexpected shutdown
+    }    
+ 
+    
+    float resolution;
+    // std::vector<int64_t> size;
+    std::vector<cv::Mat> maps_cv;
+    cv::Mat merged_map_cv ;
+    // Store subscriptions dynamically for each camera address
+    std::unordered_map<std::string, rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr> subscriptions_;
+
+    
+    // Store received maps
+    std::unordered_map<std::string, nav_msgs::msg::OccupancyGrid> maps_;
+    
+    // Publisher for the merged map
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr merged_map_publisher_;
+    rclcpp::TimerBase::SharedPtr timer_ptr_;
+    
+    // List of camera addresses
+    std::vector<std::string> camera_addresses_;
+
+    // TF2 buffer and listener
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+    std::unordered_map<std::string,geometry_msgs::msg::TransformStamped> transforms_ ;
+    geometry_msgs::msg::TransformStamped transform;
+    nav_msgs::msg::OccupancyGrid merged_map;
+};
+
+int main(int argc, char * argv[])
+{
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<MapMergerNode>());
+    rclcpp::shutdown();
+    return 0;
+}
