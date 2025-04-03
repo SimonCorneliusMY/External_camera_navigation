@@ -4,6 +4,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <unordered_map>
 #include <string>
 #include <memory>
@@ -39,6 +40,8 @@ public:
         // Create publisher for the merged map
         merged_map_publisher_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map", qos_profile_reliable);
+
+        obstacle_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("obstacle" , qos_profile_reliable);    
 
         // Create timer to control publishing of merged map
         timer_ptr_ = this->create_wall_timer(std::chrono::milliseconds(500),std::bind(&MapMergerNode::timer_callback, this));
@@ -91,8 +94,98 @@ private:
         }
         // merge maps
         mergeMaps();
+        obstacles();
 
     }
+
+    void obstacles(){
+        // clear points to avoid build up of data in it.
+        points.clear();
+        
+        // Set the header of the point cloud
+        obstacle.header.stamp = rclcpp::Clock().now();
+        obstacle.header.frame_id = "map"; // Set the frame_id for the point cloud
+        
+        // Set height and width of the point cloud
+        obstacle.height = 1;  // Single row of points (unordered)
+        
+
+        // Iterate through the occupancy grid and add occupied cells (value 100) as points
+        const auto& origin = merged_map.info.origin;
+        const float resolution = merged_map.info.resolution;
+        
+        for (size_t y = 0; y < merged_map.info.height; ++y)
+        {
+            for (size_t x = 0; x < merged_map.info.width; ++x)
+            {
+                // Occupied cell value is 100
+                if (merged_map.data[y * merged_map.info.width + x] == 100)
+                {
+
+                    // Convert grid coordinates (x, y) to world coordinates (X, Y)
+
+                    pt.x = origin.position.x + x * resolution + resolution / 2.0;
+                    pt.y = origin.position.y + y * resolution + resolution / 2.0;
+                    pt.z = 0.0;  // Z is always 0 in 2D grid
+
+                    points.push_back(pt);
+                }
+            }
+        }
+        obstacle.width = points.size();  // One point for each cell in the grid
+        // Create PointFields for the point cloud
+        
+
+        // Add X, Y, Z field (for 3D point cloud data)
+
+        x_field.name = "x";
+        x_field.offset = 0;
+        x_field.datatype = sensor_msgs::msg::PointField::FLOAT32;
+        x_field.count = 1;
+        fields.push_back(x_field);
+
+        y_field.name = "y";
+        y_field.offset = 4;  // Offset in bytes (float is 4 bytes)
+        y_field.datatype = sensor_msgs::msg::PointField::FLOAT32;
+        y_field.count = 1;
+        fields.push_back(y_field);
+
+        z_field.name = "z";
+        z_field.offset = 8;
+        z_field.datatype = sensor_msgs::msg::PointField::FLOAT32;
+        z_field.count = 1;
+        fields.push_back(z_field);
+
+        // Assign fields to pointcloud message
+        obstacle.fields = fields;
+        
+        // Point step (size of one point in bytes)
+        obstacle.point_step = 12;  // 3 floats (x, y, z), each float is 4 bytes
+        obstacle.row_step = obstacle.point_step * points.size();
+        obstacle.is_bigendian = false; // Little endian
+        obstacle.is_dense = true; // All points are valid (no NaNs or invalid points)
+
+        
+
+        // Create a buffer for the point data
+        obstacle.data.resize(obstacle.row_step);
+
+
+        size_t i = 0;
+        for (const auto& pt : points)
+        {
+            memcpy(&obstacle.data[i], &pt.x, sizeof(pt.x));  // Copy x
+            i += sizeof(pt.x);
+            memcpy(&obstacle.data[i], &pt.y, sizeof(pt.y));  // Copy y
+            i += sizeof(pt.y);
+            memcpy(&obstacle.data[i], &pt.z, sizeof(pt.z));  // Copy z
+            i += sizeof(pt.z);
+        }
+
+        // Publish the PointCloud2 message
+        obstacle_publisher->publish(obstacle);
+
+    }    
 
     void mergeMaps()
     {
@@ -252,6 +345,13 @@ private:
     std::unordered_map<std::string,geometry_msgs::msg::TransformStamped> transforms_ ;
     geometry_msgs::msg::TransformStamped transform;
     nav_msgs::msg::OccupancyGrid merged_map;
+
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr obstacle_publisher;
+    sensor_msgs::msg::PointCloud2 obstacle;
+    std::vector<geometry_msgs::msg::Point32> points;
+    geometry_msgs::msg::Point32 pt;
+    sensor_msgs::msg::PointField x_field, y_field, z_field;
+    std::vector<sensor_msgs::msg::PointField> fields;
 };
 
 int main(int argc, char * argv[])
