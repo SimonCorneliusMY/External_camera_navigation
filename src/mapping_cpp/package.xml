@@ -15,6 +15,11 @@
   <depend>cv_bridge</depend>
   <depend>sensor_msgs</depend>
   <depend>my_custom_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>pcl_conversions</depend>
+  <depend>PCL</depend>
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
 
   <exec_depend>message_filters</exec_depend>
 
