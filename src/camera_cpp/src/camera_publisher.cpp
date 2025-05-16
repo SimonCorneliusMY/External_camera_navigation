@@ -25,10 +25,12 @@ public:
         : Node("webcam_publisher") {
 
         this->declare_parameter<bool>("view_feed", false);
-        this->declare_parameter<std::string>("camera_address", "0");
+        // this->declare_parameter<std::string>("camera_address", "http://192.168.0.101:81/stream");
+        this->declare_parameter<std::string>("camera_address", "udp://@192.168.0.102:5000");
         this->declare_parameter<std::string>("name","0");
         
 
+ 
         rclcpp::QoS profile(rclcpp::KeepLast(10));
         profile.reliable();
 
@@ -36,26 +38,42 @@ public:
         if(!this->get_parameter("camera_address",camera_address)){
             RCLCPP_ERROR(this->get_logger(), "Failed to get camera address");
         }
+        std::string pipeline = 
+        "udpsrc port=" + camera_address +" buffer-size=65536 ! "  // Increased buffer size
+        "application/x-rtp,media=video,encoding-name=JPEG,payload=26 ! "
+        "rtpjpegdepay ! jpegdec ! "
+        "queue max-size-buffers=2 ! "  // Small queue for minimal latency
+        "videoconvert ! videorate ! "
+        "video/x-raw,format=BGR,framerate=30/1 ! "
+        "appsink sync=false drop=true";
+
         // Open the default webcam. TODO if use http camera and http camera not available it gets stuck even pressing ctrl c fails to kill it.
-        while(!cap_.isOpened()){
+        while(!cap_.isOpened() && rclcpp::ok()){
             try{
-                if(cap_.open(std::stoi(camera_address), cv::CAP_V4L2)){
+                RCLCPP_INFO(this->get_logger(),"%d", cap_.open(camera_address,cv::CAP_GSTREAMER));
+                if(camera_address.size() == 1 && cap_.open(std::stoi(camera_address), cv::CAP_V4L2)){
                     RCLCPP_INFO(this->get_logger(), "%s", camera_address.c_str());
                     cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));  // MJPEG format
                     cap_.set(cv::CAP_PROP_FRAME_WIDTH, 1280);  // Set width to 1280px
                     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, 720); // Set height to 720px
                 }
-
-            }catch(...){
-
-                if(cap_.open(camera_address,cv::CAP_FFMPEG)){
-                    std::string url = camera_address.substr(0,camera_address.find_last_of(":"));
-                    http_set_resolution(url,"11");
+                
+                else if(cap_.open(pipeline,cv::CAP_GSTREAMER)){
+                    RCLCPP_INFO(this->get_logger(), "UDP stream port number: %s", camera_address.c_str());
                 }
 
+                else if(cap_.open(camera_address,cv::CAP_FFMPEG)){
+                    std::string url = camera_address.substr(0,camera_address.find_last_of(":"));
+                    http_set_resolution(url,"13");
+                }else{
+                    RCLCPP_WARN(this->get_logger(), "Failed to open camera, address: %s.", camera_address.c_str());
+                    sleep(5);
+                }
+
+            }catch(std::exception& e){
+                RCLCPP_ERROR(this->get_logger(), "Exception: %s", e.what());
             }
-            RCLCPP_WARN(this->get_logger(), "Failed to open camera, address: %s.", camera_address.c_str());
-            sleep(5);
+
 
         }
 
@@ -72,6 +90,7 @@ public:
     }
 
 private:
+// so you can set the camera's settings in the arduino file itself, hence WriteCallback and http_set_resolution is obsolete 250424
     // chatgpt handywork
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
         ((std::string*)userp)->append((char*)contents, size * nmemb);
