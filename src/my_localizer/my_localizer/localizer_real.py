@@ -13,6 +13,7 @@ from sensor_msgs.msg import Imu
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Pose, TransformStamped,Vector3Stamped
 from std_msgs.msg import Int16MultiArray
+from std_msgs.msg import Float32
 from nav_msgs.msg import Path
 
 from tf2_ros import TransformBroadcaster, TransformListener, Buffer
@@ -21,6 +22,9 @@ from ultralytics import YOLO
 from my_custom_msgs.msg import Bbox
 from tf2_geometry_msgs import do_transform_pose_stamped
 
+
+
+#Publishes the pose and bounding box of the robot regardless of whether it is detected.
 #This node currently takes the most cpu usage at 5%, name is pt_main no idea why its called that
 #Greatest time taken is 0.07 used by yolo detection.
 #GPU used is intel which doesnt support cuda, hence optimization using GPU can be done for improvements.
@@ -45,15 +49,14 @@ class localizer(Node):
                                     depth = 10
                                     )
         
-        cv.namedWindow('image',cv.WINDOW_NORMAL)
-        # TODO train yolo model to detect both 24/02/13
+
         use_sim_time = self.get_parameter('use_sim_time').get_parameter_value().bool_value
         self.homo_resolution = self.get_parameter('resolution').get_parameter_value().double_value
         if use_sim_time:
             self.model = YOLO("/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_sim_v2/weights/best.pt")
             # self.homo_resolution = 3.54/1203
         elif not(use_sim_time):
-            self.model = YOLO("/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_v3/weights/best.pt")
+            self.model = YOLO("/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_v4/weights/best.pt")
             # self.homo_resolution = 3.54/1203
 
         self.publish_pose_tf = self.get_parameter('publish_pose_tf').get_parameter_value().bool_value
@@ -71,6 +74,7 @@ class localizer(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer,self)
         self.label = ''
+        self.conf = Float32()
         if self.record:
             #Warning make sure you have enough space, 30 min record was 700MB
             #Frame resolution needs to be the same for recording to work.
@@ -96,12 +100,42 @@ class localizer(Node):
         self.camera_subscription = self.create_subscription(Image,'camera_'+ self.name +'/image_raw', self.camera_callback,10)
         self.imu_subscription = self.create_subscription(Imu, 'imu', self.imu_callback, 10)
         self.pose_publisher = self.create_publisher(PoseStamped,'pose_' + self.name,qos_policy)
-        self.pose_pixel_publisher = self.create_publisher(Int16MultiArray,'pose_pixel_' + self.name,qos_policy)
-        self.bounding_box_publisher = self.create_publisher(Bbox,'bounding_box_' + self.name,10)
-        self.pose_timer = self.create_timer(0.033,self.pose_timer_callback)
-
-
+        self.confidence_publisher = self. create_publisher(Float32,'conf_' + self.name,10)
         
+        # self.pose_pixel_publisher = self.create_publisher(Int16MultiArray,'pose_pixel_' + self.name,qos_policy)
+        self.bounding_box_publisher = self.create_publisher(Bbox,'bounding_box_' + self.name,10)
+        # self.pose_timer = self.create_timer(0.033,self.pose_timer_callback)
+
+
+    def publish(self):
+        if self.publish_pose_tf:
+            odom_to_basefootprint = TransformStamped()
+            odom_to_basefootprint.header.stamp = self.get_clock().now().to_msg()
+            odom_to_basefootprint.header.frame_id = 'odom'
+            odom_to_basefootprint.child_frame_id = 'base_footprint'
+            odom_to_basefootprint.transform.translation.x = self.pose_xy_homo.pose.position.x
+            odom_to_basefootprint.transform.translation.y = self.pose_xy_homo.pose.position.y 
+            odom_to_basefootprint.transform.translation.z = 0.0
+
+            odom_to_basefootprint.transform.rotation.x = self.pose_xy_homo.pose.orientation.x
+            odom_to_basefootprint.transform.rotation.y = self.pose_xy_homo.pose.orientation.y
+            odom_to_basefootprint.transform.rotation.z = self.pose_xy_homo.pose.orientation.z
+            odom_to_basefootprint.transform.rotation.w = self.pose_xy_homo.pose.orientation.w
+            
+            self.pose_tf_publisher.sendTransform(odom_to_basefootprint)
+        # self.pose_tf_publisher.sendTransform(map_to_odom)
+        #pose in meter with xy coordinates
+
+        self.pose_xy_homo.header.stamp = self.get_clock().now().to_msg()
+        self.pose_xy_homo.header.frame_id = self.label
+        self.pose_publisher.publish(self.pose_xy_homo)
+        self.confidence_publisher.publish(self.conf)
+
+        #pose in pixels with xy coordinates (opencv uses row col or y x)
+        # self.pose_pixel_publisher.publish(self.pose_xy_pixels_homo)
+        #1 box = 2 coordinates / 4 values order top left bottom right
+        self.bounding_box.header.frame_id = self.label
+        self.bounding_box_publisher.publish(self.bounding_box)            
 
     def imu_callback(self,data:Imu):
         try:
@@ -120,15 +154,11 @@ class localizer(Node):
         
         try:
             
-            self.current_frame = self.br.imgmsg_to_cv2(data)
-            
-            cv.cvtColor(self.current_frame,cv.COLOR_BGR2RGB,self.current_frame)
-            
-            self.localization_yolov8()  #this function is tightly integrated with the class instance, lots of changes needed to be standalone
-            
+            self.current_frame = self.br.imgmsg_to_cv2(data)           
+            cv.cvtColor(self.current_frame,cv.COLOR_BGR2RGB,self.current_frame)        
+            self.localization_yolov8()  #this function is tightly integrated with the class instance, lots of changes needed to be standalone       
             self.homographic(self.pose_xy_pixels)
-
-
+            self.publish()
 
         except Exception as e:
 
@@ -136,7 +166,8 @@ class localizer(Node):
 
         finally:
             return
-        
+
+
     def pose_timer_callback(self):
         # self.get_logger().info(f"Node '{self.get_name()}' is in state '")
         # I feel like i should have done map to basefootprint and left the odom transform in the turtlebot3 on, 240219 Simon
@@ -176,8 +207,9 @@ class localizer(Node):
         self.pose_publisher.publish(self.pose_xy_homo)
 
         #pose in pixels with xy coordinates (opencv uses row col or y x)
-        self.pose_pixel_publisher.publish(self.pose_xy_pixels_homo)
+        # self.pose_pixel_publisher.publish(self.pose_xy_pixels_homo)
         #1 box = 2 coordinates / 4 values order top left bottom right
+        self.bounding_box.header.frame_id = self.label
         self.bounding_box_publisher.publish(self.bounding_box)
 
         
@@ -194,9 +226,11 @@ class localizer(Node):
             self.get_logger().info("Invalid image")
             return 
 
-        #TODO optimize, line below takes 0.07 secs to process or maybe try cpp version
-        self.yolo_results = self.model.track(self.current_frame,conf = 0.4,verbose = False)  # Assuming this returns detections
+        #TODO optimize, line below takes 0.07 secs to process try gpu
+        self.yolo_results = self.model.track(self.current_frame,conf = 0.2,verbose = False)  # Assuming this returns detections
+        self.bounding_box.header.stamp = self.get_clock().now().to_msg()
 
+        # self.get_logger().info(f"Confidence: {self.yolo_results[0].boxes.conf.item()}")
 
         #annotate image with bounding box no labels
         self.annotated_frame = self.yolo_results[0].plot(labels=False)
@@ -205,23 +239,29 @@ class localizer(Node):
         if len(self.yolo_results[0].boxes) == 0 and not self.object_print:
             # No objects detected, return default values
             self.get_logger().info("No objects detected")
-            self.label = ''
+            self.label = 'No objects detected'
             self.object_print = True
+            self.conf.data = 0.0
+            
             return
         elif self.object_print and len(self.yolo_results[0].boxes) == 0:
             return
         
         self.object_print = False
+        
+        self.conf.data = self.yolo_results[0].boxes.conf.item()
 
+        
         #get class id of identified object
         cls_id = self.yolo_results[0].boxes.cls
         #get the name of the class id
         self.label = self.yolo_results[0].names[int(cls_id)]
+        
 
         #get the coordinates of the bounding box [top_left:row col , bottom_right: row col]
         tb3_box_TLBR = self.yolo_results[0].boxes.xyxy.reshape(-1)
         self.bounding_box.data = np.array(tb3_box_TLBR,dtype=np.int16).tolist()
-        self.bounding_box.header.stamp = self.get_clock().now().to_msg()
+        
         
         #middle point of x/column
         x = (tb3_box_TLBR[0]+tb3_box_TLBR[2])/2
@@ -253,12 +293,6 @@ class localizer(Node):
         transform = self.tf_buffer.lookup_transform('map',f"map_{self.name}",rclpy.time.Time())
         self.pose_xy_homo = do_transform_pose_stamped(pose,transform)
 
-        # #TODO use tf2 for pose transforms so for each camera we just specify the transform and localizer will work
-        # x = self.pose_xy_pixels_homo.data[0]*self.homo_resolution
-        # y = (1168 - self.pose_xy_pixels_homo.data[1])*self.homo_resolution
-
-        # print([x,y],self.pose_xy_homo.pose.position)
-        # print(transformed_pose.pose.position)
         
         if self.show_homographic_region:
             pts1 = np.array([self.pts1[0],self.pts1[2],self.pts1[3],self.pts1[1]],np.int32)
