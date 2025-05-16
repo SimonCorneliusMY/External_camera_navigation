@@ -44,13 +44,13 @@ public:
         obstacle_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("obstacle" , qos_profile_reliable);    
 
         // Create timer to control publishing of merged map
-        timer_ptr_ = this->create_wall_timer(std::chrono::milliseconds(500),std::bind(&MapMergerNode::timer_callback, this));
+        timer_ptr_ = this->create_wall_timer(std::chrono::milliseconds(50),std::bind(&MapMergerNode::timer_callback, this));
 
         // Subscribe to map topics dynamically based on the camera addresses
         for (const auto &camera_address : camera_addresses_)
         {
             std::string topic_name = "/map_" + camera_address;  // Generate topic name dynamically
-            RCLCPP_INFO(this->get_logger(), "Subscribing to %s", topic_name.c_str());
+            
             
             auto callback = [this, camera_address](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
                 this->mapCallback(msg, camera_address);
@@ -79,15 +79,19 @@ private:
     {
         // Store the received map
         maps_[camera_address] = *msg;
+        
     }
     void timer_callback(){
 
         // Check number of maps stored is same as number of cameras
-        if (maps_.size() != camera_addresses_.size()){
+        if (maps_.size() != camera_addresses_.size() && print_once == false){
             RCLCPP_INFO(this->get_logger(),"Maps stored: %ld but camera addresses: %ld", maps_.size(),camera_addresses_.size());
+            print_once = true;
+            return;
+        }else if (maps_.size() != camera_addresses_.size() && print_once == true){
             return;
         }
-
+        print_once = false;
         // Check if data size is same as map dimensions or dimensions is zero, ideally runs once
         if (merged_map.info.height*merged_map.info.width != merged_map.data.size() || merged_map.info.height == 0){
             get_merged_map_size();
@@ -243,7 +247,7 @@ private:
         merged_map.info.origin.position.set__x(min_x*resolution);
         merged_map.info.origin.position.set__y(min_y*resolution);
         merged_map_cv = cv::Mat(merged_map.info.height,merged_map.info.width, CV_8UC1, cv::Scalar(255));
-        RCLCPP_INFO(this->get_logger(),"Width: %d , Height: %d", merged_map.info.width,merged_map.info.height);
+        RCLCPP_INFO(this->get_logger(),"Map: Width: %d , Height: %d", merged_map.info.width,merged_map.info.height);
     }
     
     void transform_map(const nav_msgs::msg::OccupancyGrid& map,
@@ -320,7 +324,7 @@ private:
         return false; // In case of an unexpected shutdown
     }    
  
-    
+    bool print_once = false;
     float resolution;
     // std::vector<int64_t> size;
     std::vector<cv::Mat> maps_cv;
