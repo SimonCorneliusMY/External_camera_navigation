@@ -20,6 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'pose_aggregator = my_localizer.pose_aggregator:main',
+            'static_tf = my_localizer.static_tf:main',
             'my_localizer = my_localizer.my_localizer:main',
             'my_localizer_real = my_localizer.my_localizer_real:main',
             'localizer_sim = my_localizer.localizer_sim:main',
