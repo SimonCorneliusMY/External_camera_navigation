@@ -137,7 +137,7 @@ def generate_launch_description():
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         'rviz_config_file',
         default_value=os.path.join(
-            bringup_dir, 'rviz', 'my_default_view.rviz'),
+            bringup_dir, 'rviz', 'my_default_view_2.rviz'),
         description='Full path to the RVIZ config file to use')
 
     declare_use_simulator_cmd = DeclareLaunchArgument(
@@ -185,6 +185,64 @@ def generate_launch_description():
     ld = LaunchDescription()
     ld.add_action(declare_use_sim_time_cmd)
 
+
+
+
+
+    map_to_odom_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments = ['--x', '0', '--y', '0', '--z', '0', '--roll', '0', '--pitch', '0', '--yaw', '0', '--frame-id', 'map', '--child-frame-id', 'odom']
+        )
+
+    pose_aggregator = Node(
+        package='my_localizer',
+        executable='pose_aggregator',
+        name='pose_aggregator',
+        output = 'screen',
+        parameters = [{'robot_name': 'Turtlebot3-sim'},
+                     {'num_cameras': 2},
+                     {'use_sim_time': use_sim_time}]
+        )
+    
+    map_merger = Node(
+        package='mapping_cpp',
+        executable='map_merger',
+        name='map_merger',
+        output = 'screen',
+        parameters= [{'resolution': 3.45787/980},
+                     {'camera_addresses': camera_addresses},
+                     {'use_sim_time': use_sim_time}]
+    )
+    gazebo_turtlebot_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            '/home/tarumt2204/External_camera_navigation/src/tb3_nav2_commander/launch/my_world.launch.py'),
+        
+        )
+
+
+    rviz_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(launch_dir, 'rviz_launch.py')),
+        condition=IfCondition(use_rviz),
+        launch_arguments={'namespace': namespace,
+                          'use_namespace': use_namespace,
+                          'rviz_config': rviz_config_file}.items())
+
+    bringup_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(launch_dir, 'my_bringup_launch.py')),
+        launch_arguments={'namespace': namespace,
+                          'use_namespace': use_namespace,
+                          'slam': slam,
+                          'map': map_yaml_file,
+                          'use_sim_time': use_sim_time,
+                          'params_file': params_file,
+                          'autostart': autostart,
+                          'use_composition': use_composition,
+                          'use_respawn': use_respawn}.items())
+
+    # Create the launch description and populate
     i = 0
     for camera_address in camera_addresses:
         # Static tf publisher option 1, use tf2_ros package, this creates a new node for each static tf, option 2, write the static tf in camera
@@ -218,7 +276,7 @@ def generate_launch_description():
                 name=f'localizer_real_{i}',  # Unique name for each instance
                 output='screen',
                 parameters=[{'name': f'{i}'},
-                            {'show_homographic_region': True},
+                            {'show_homographic_region': False},
                             {'record': False},
                             {'publish_pose_tf': False},
                             {'use_sim_time': use_sim_time},
@@ -250,54 +308,6 @@ def generate_launch_description():
 
         # Increment the camera index
         i += 1
-
-
-
-    map_to_odom_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        arguments = ['--x', '0', '--y', '0', '--z', '0', '--roll', '0', '--pitch', '0', '--yaw', '0', '--frame-id', 'map', '--child-frame-id', 'odom']
-        )
-
-    pose_aggregator = Node(
-        package='my_localizer',
-        executable='pose_aggregator',
-        name='pose_aggregator',
-        output = 'screen',
-        parameters = [{'robot_name': 'Turtlebot3-sim'},
-                     {'num_cameras': 2},
-                     {'use_sim_time': use_sim_time}]
-        )
-    gazebo_turtlebot_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            '/home/tarumt2204/External_camera_navigation/src/tb3_nav2_commander/launch/my_world.launch.py'),
-        
-        )
-
-
-    rviz_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(launch_dir, 'rviz_launch.py')),
-        condition=IfCondition(use_rviz),
-        launch_arguments={'namespace': namespace,
-                          'use_namespace': use_namespace,
-                          'rviz_config': rviz_config_file}.items())
-
-    bringup_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(launch_dir, 'my_bringup_launch.py')),
-        launch_arguments={'namespace': namespace,
-                          'use_namespace': use_namespace,
-                          'slam': slam,
-                          'map': map_yaml_file,
-                          'use_sim_time': use_sim_time,
-                          'params_file': params_file,
-                          'autostart': autostart,
-                          'use_composition': use_composition,
-                          'use_respawn': use_respawn}.items())
-
-    # Create the launch description and populate
-
 
     # Declare the launch options
     ld.add_action(declare_namespace_cmd)
@@ -331,6 +341,7 @@ def generate_launch_description():
     ld.add_action(bringup_cmd)
     ld.add_action(gazebo_turtlebot_cmd)
     ld.add_action(pose_aggregator)
+    ld.add_action(map_merger)
 
 
     return ld
