@@ -19,8 +19,10 @@ public:
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
         this->declare_parameter<double>("resolution", 3.45787/980);
         this->declare_parameter<std::vector<std::string>>("camera_addresses", {"0","1"});
+        this->declare_parameter("local_costmap.inflation_layer.inflation_radius", 0.55);
         this->get_parameter("camera_addresses",camera_addresses_);
         this->get_parameter("resolution", resolution);
+        this->get_parameter("local_costmap.inflation_layer.inflation_radius", inflation_radius_);
 
         // merged map parameters
         merged_map.header.frame_id = "map";  // Use reference frame
@@ -29,6 +31,8 @@ public:
         merged_map.info.origin.position.y = 0.0;
         merged_map.info.origin.position.z = 0.0;
         merged_map.info.origin.orientation.w = 1.0;  // Identity quaternion
+
+        border_size = inflation_radius_/resolution/2;
 
         // merged_map_cv = cv::Mat(2266,980, CV_8UC1, cv::Scalar(255));
 
@@ -198,11 +202,20 @@ private:
         for(const auto& map:maps_){
             transform_map(map.second,transforms_[map.first]);
         }
-
+        // Add border to merged map
+        // cv::Mat merged_map_cv_border;
+        // cv::copyMakeBorder(merged_map_cv, merged_map_cv_border,1,1,1,1, cv::BORDER_CONSTANT, 0);
+        // RCLCPP_INFO(this->get_logger(),"Size: %d, %d", merged_map_cv_border.rows, merged_map_cv_border.cols);
+        // RCLCPP_INFO(this->get_logger(),"Size: %d, %d", merged_map_cv.rows, merged_map_cv.cols);
+        // // cv::imshow("Merged Map", merged_map_cv_border);
+        // cv::waitKey(1);
+        
         // Fill in merged map parameters and publish     
+        // cv::rectangle(merged_map_cv, cv::Rect(0,0,merged_map_cv.cols,merged_map_cv.rows),0,100);
         merged_map.header.stamp = this->now();
         merged_map.data.assign(merged_map_cv.begin<int8_t>(), merged_map_cv.end<int8_t>());
         merged_map_publisher_->publish(merged_map);
+        
 
     }
 
@@ -242,11 +255,13 @@ private:
         double height = max_y - min_y;
 
         // Set the merged map height and width
-        merged_map.info.set__height(static_cast<unsigned int>(std::round(height)));
-        merged_map.info.set__width(static_cast<unsigned int>(std::round(width)));
+        merged_map.info.set__height(static_cast<unsigned int>(std::round(height+border_size)));
+        merged_map.info.set__width(static_cast<unsigned int>(std::round(width+border_size)));
         merged_map.info.origin.position.set__x(min_x*resolution);
         merged_map.info.origin.position.set__y(min_y*resolution);
-        merged_map_cv = cv::Mat(merged_map.info.height,merged_map.info.width, CV_8UC1, cv::Scalar(255));
+        // initialize merged map as single channel with all obstacles (100 as obstacle)
+        merged_map_cv = cv::Mat(merged_map.info.height,merged_map.info.width, CV_8UC1, cv::Scalar(0));
+        cv::rectangle(merged_map_cv, cv::Rect(0,0,merged_map_cv.cols,merged_map_cv.rows),100,1);
         RCLCPP_INFO(this->get_logger(),"Map: Width: %d , Height: %d", merged_map.info.width,merged_map.info.height);
     }
     
@@ -275,7 +290,7 @@ private:
                     int new_y = static_cast<int>(point_in_world.y - merged_map.info.origin.position.y/resolution);
 
                     // Ensure indices are within bounds
-                    if (new_x >= 0 && new_x < merged_map_cv.cols && new_y >= 0 && new_y < merged_map_cv.rows) {
+                    if (new_x > border_size && new_x < merged_map_cv.cols-border_size && new_y > border_size && new_y < merged_map_cv.rows-border_size) {
                         // Get the occupancy value and set the transformed map
                         int index = i * width + j;
                         // Use AND logic to combine free space to existing merged map
@@ -326,6 +341,8 @@ private:
  
     bool print_once = false;
     float resolution;
+    double inflation_radius_;
+    int border_size;
     // std::vector<int64_t> size;
     std::vector<cv::Mat> maps_cv;
     cv::Mat merged_map_cv ;
