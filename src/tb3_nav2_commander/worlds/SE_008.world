@@ -82,7 +82,7 @@
     </scene>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>6.37365 18.083 6.27278 0 0.797796 -2.3147</pose>
+        <pose>5.526891 0.834905 6.839809 0 0.733796 1.640486</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
@@ -2792,13 +2792,7 @@
       <pose>8.41504 13.6454 0 0 -0 0</pose>
     </model>
 
-    <!-- <gui fullscreen='0'>
-      <camera name='user_camera'>
-        <pose>7.67478 1.17104 13.7875 0 1.4778 1.55306</pose>
-        <view_controller>orbit</view_controller>
-        <projection_type>perspective</projection_type>
-      </camera>
-    </gui> -->
+
     <model name='camera_0'>
       <pose>3.5869 2.75903 2.0722 0.025529 0.444736 1.77589</pose>
       <static>1</static>
@@ -3559,7 +3553,7 @@
     <!-- An animated box workaround. Without the skin tag the box stops moving,
     so the human model is shrunk to fit inside the box 240326 SPC
     the dynamic obstacle can't interact with any object, no collision-->
-    <actor name="actor">
+    <!-- <actor name="actor">
       
       <link name="link">
         <inertial>
@@ -3619,7 +3613,7 @@
             </waypoint>
         </trajectory>
       </script>
-    </actor>
+    </actor> -->
     <!-- walking human that avoids obstacles -->
     <!-- <actor name="actor1">
       <pose>0 -1 -1.25 0 0 0</pose>
@@ -3643,5 +3637,9 @@
         </ignore_obstacles>
       </plugin>
     </actor>     -->
+    <include>
+      <uri>model://box_cover_test2</uri>
+      <pose>1.0 8.0 0.1 0.0 0.0 0.0</pose>
+    </include>
   </world>
 </sdf>
