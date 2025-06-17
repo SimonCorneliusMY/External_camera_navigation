@@ -101,7 +101,9 @@ public:
         this->declare_parameter<std::vector<int>>("HSV", {18, 0, 0, 28, 255, 255});
         this->declare_parameter<int>("inflation", 17);
         this->declare_parameter<int>("morph_size", 2);
-        
+        this->declare_parameter<double>("age_penalty", 0.4);
+
+        this->get_parameter("age_penalty", age_penalty);
         this->get_parameter("resolution", map.info.resolution);
         this->get_parameter("save_map", save_map);
         this->get_parameter("name", name);
@@ -128,7 +130,7 @@ public:
                 my_custom_msgs::msg::Bbox>(queue_size), image_sub,bounding_box_sub);
 
         // limit of sync mismatch
-        sync->setAgePenalty(0.5);
+        sync->setAgePenalty(age_penalty);
         sync->registerCallback(std::bind(&Mapping::SyncCallback, this, _1, _2));
         //pose subscription
         pose_sub = this->create_subscription<geometry_msgs::msg::PoseStamped>("pose", 10, std::bind(&Mapping::pose_callback, this, _1));
@@ -177,38 +179,36 @@ private:
             if (cv_ptr.empty()){
                 return;
             }
-            // RCLCPP_INFO(this->get_logger(),"Bounding box: %d, within map: %d", (bbox->header.frame_id == "No objects detected" ), within_map());
-            switch ((bbox->header.frame_id == "No objects detected" )+ within_map()){
-                RCLCPP_INFO(this->get_logger(),"Case : %d", (bbox->header.frame_id == "No objects detected" )+ within_map());
+
+            // RCLCPP_INFO(this->get_logger(), "Condition: %d", (bbox->header.frame_id == "No objects detected" )+ within_map() );
+            // not detected, within map 1,0 and 0,1 we map, 1,1 we return, 0,0 we print warning
+            switch((bbox->header.frame_id == "No objects detected" )+ within_map()){
                 case 1:{
                     mapping(cv_ptr,bounding_box);
+                    print_once = false;
                     break;
                 }
-                case 2: {
+                case 2:{
                     return;
                 }
                 case 0:{
-                    RCLCPP_INFO(this->get_logger(),"YOLO false positive, try increasing confidence threshold in localizer node");
+                    if (!print_once){
+                        RCLCPP_INFO(this->get_logger(),"YOLO false positive, try increasing confidence threshold in localizer node");
+                        print_once = true;
+                    }
+                    return;
                 }
-
             }
-            // if(bounding_box.empty() && within_map){
-            //     return;
-            // }else if(!bounding_box.empty() && within_map){
+            // if((bounding_box.empty() + within_map()) != 0){
             //     mapping(cv_ptr,bounding_box);
-            // }else if(bounding_box.empty() && !within_map)
-
-
-            
-
-            
-            // // cv::Mat image = br->imgmsg_to_cv2(*msg, "bgr8");
-            // if ( !cv_ptr.empty() )
-            // {
-            //     erase_tb3(cv_ptr,bounding_box);
-            //     mapping(cv_ptr, bounding_box);
-            //     // obstacles();
+            //     print_once = false;
+            // }else if((bounding_box.empty() + within_map()) == 0 && !print_once){
+            //     RCLCPP_INFO(this->get_logger(),"YOLO false positive, try increasing confidence threshold in localizer node");
+            //     print_once = true;
+            //     return;
             // }
+            
+
         }
         catch (const cv_bridge::Exception &e)
         {
@@ -446,13 +446,13 @@ private:
             // RCLCPP_INFO(this->get_logger(), "Pose x %f y %f , Map bound min x %f y %f, max x %f max y %f",
             //     poses.back().x, poses.back().y, map_bounds.at("min").at(0),map_bounds.at("min").at(1),map_bounds.at("max").at(0),map_bounds.at("max").at(1));
             // Check if x is within bounds
-            if (poses.back().x < map_bounds.at("min").at(0) || poses.back().x > map_bounds.at("max").at(0)) {
+            if (poses.back().x < map_bounds.at("min").at(0) - map_transition_length || poses.back().x > map_bounds.at("max").at(0) + map_transition_length) {
 ;
                 return false;
             }
             
             // Check if y is within bounds
-            if (poses.back().y < map_bounds.at("min").at(1) || poses.back().y > map_bounds.at("max").at(1)) {
+            if (poses.back().y < map_bounds.at("min").at(1) - map_transition_length || poses.back().y > map_bounds.at("max").at(1) + map_transition_length) {
                 return false;
             }
             
@@ -500,6 +500,9 @@ private:
         map_bounds["min"].push_back(min_y * map.info.resolution - map_inflation_metres);
         map_bounds["max"].push_back(max_x * map.info.resolution + map_inflation_metres);
         map_bounds["max"].push_back(max_y * map.info.resolution + map_inflation_metres);
+        RCLCPP_INFO(this->get_logger(), "Map bounds: min (%f,%f), max (%f,%f)",
+            map_bounds.at("min").at(0), map_bounds.at("min").at(1),
+            map_bounds.at("max").at(0), map_bounds.at("max").at(1));
         
 
     }
@@ -549,7 +552,7 @@ private:
     geometry_msgs::msg::Point32 pt;
     
     std::string name;
-    bool save_map,bbox_image_check;
+    bool save_map,bbox_image_check,print_once = false;
     std::vector<int16_t> bounding_box;
     std::unordered_map<std::string,std::vector<double>> map_bounds;
     std::queue<geometry_msgs::msg::Point> poses;
@@ -559,7 +562,7 @@ private:
 
     cv::Point2f pose_xy_homo;
     cv::Point2f pose_xy_pixels_homo;
-    double low_resolution;
+    double low_resolution, map_transition_length = 0.5,age_penalty;
 
     std::chrono::steady_clock::time_point t1, t2, t3 ;
     cv::Mat homo_transform, M, hsv, mask, mask_open, maze_bw_flip;
