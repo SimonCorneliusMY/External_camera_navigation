@@ -4,7 +4,7 @@
 
         "/opt/ros/humble/lib/python3.10/site-packages",
         "/opt/ros/humble/local/lib/python3.10/dist-packages",
-        "/home/tarumt2204/External_camera_navigation/install/my_custom_msgs/local/lib/python3.10/dist-packages"
+        "/home/tarumt2204/External_camera_navigation/install/my_custom_msgs/local/lib/python3.10/dist-packages/**"
     ],
     "cmake.sourceDirectory": [
         "/home/tarumt2204/External_camera_navigation/src/mapping_cpp",

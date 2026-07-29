@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'my_localizer'
+package_name = 'experiment'
 
 setup(
     name=package_name,
@@ -20,12 +20,12 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pose_aggregator = my_localizer.pose_aggregator:main',
-            'static_tf = my_localizer.static_tf:main',
-            'my_localizer = my_localizer.my_localizer:main',
-            'my_localizer_real = my_localizer.my_localizer_real:main',
-            'localizer_sim = my_localizer.localizer_sim:main',
-            'localizer_real = my_localizer.localizer_real:main',
+            "navigation_test = experiment.navigation_test:main",
+            "localization_test = experiment.localization_test:main",
+            "heading_cmd_vel = experiment.heading_cmd_vel:main",
+            "dummy_tb3_server = experiment.dummy_tb3_action_server:main",
+            "dummy_tb3_client = experiment.dummy_tb3_action_client:main",
+            "dummy_tb3_control = experiment.dummy_tb3_control:main",
         ],
     },
 )

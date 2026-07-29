@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+#
+# Copyright 2019 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors: Joep Tool
+
+
+# Adapted: Simon Peter Cornelius
+
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'launch')
+    pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
+    pkg_turtlebot3_gazebo = get_package_share_directory('turtlebot3_gazebo')
+
+    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
+    # x_pose = LaunchConfiguration('x_pose', default='3.503241')
+    # y_pose = LaunchConfiguration('y_pose', default='9.331408')
+    x_pose = LaunchConfiguration('x_pose', default='3.503241')
+    y_pose = LaunchConfiguration('y_pose', default='10.331408')
+    urdf = os.path.join(pkg_turtlebot3_gazebo, 'urdf', 'turtlebot3_burger.urdf')
+    with open(urdf, 'r') as infp:
+        robot_description = infp.read()
+    urdf_path = os.path.join(
+        pkg_turtlebot3_gazebo, 
+        'models', 
+        'turtlebot3_burger',
+        'model.sdf')
+
+    world = os.path.join(
+        get_package_share_directory('tb3_nav2_commander'),
+        'worlds',
+        'SE_008.world'
+    )
+
+    
+
+    gzserver_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
+        ),
+        launch_arguments={'world': world}.items()
+    )
+
+    gzclient_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
+        )
+    )
+
+    robot_state_publisher_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(launch_file_dir, 'robot_state_publisher.launch.py')
+        ),
+        launch_arguments={'use_sim_time': use_sim_time}.items()
+    )
+
+    spawn_turtlebot_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(launch_file_dir, 'spawn_turtlebot3.launch.py')
+        ),
+        launch_arguments={
+            'x_pose': x_pose,
+            'y_pose': y_pose
+        }.items()
+    )
+        # # Spawn robot node
+    dummy_tb3_spawn = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-entity', 'dummy_tb3',
+            '-file', urdf_path,
+            '-x', '1.0',
+            '-y', '8.0',
+            '-z', '0.0',
+            '-robot_namespace', 'dummy'
+        ],
+        output='screen'
+        )
+        
+        # Robot state publisher
+    dummy_tb3_robot_state = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        namespace='dummy',
+        parameters=[{
+            'robot_description': robot_description
+        }]
+    )
+        
+    # rviz_cmd = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(launch_dir, 'rviz_launch.py')),
+    #     condition=IfCondition(use_rviz),
+    #     launch_arguments={'namespace': namespace,
+    #                       'use_namespace': use_namespace,
+    #                       'rviz_config': rviz_config_file}.items())
+
+
+
+    # teleop = Node(
+    #     package= 'turtlebot3_teleop',
+    #     executable='teleop_keyboard'
+        
+    # )
+    # #restarts the node to utilize the overlay files instead.
+    # my_turtlebot3_drive = Node(
+        
+    #     package = 'turtlebot3_gazebo',
+    #     executable='turtlebot3_drive',
+    #     name='turtlebot3_diff_drive',
+    #     remappings=[
+    #         ('/cmd_vel','/cmd_vel222'),
+    #         ('/tf','/none'),
+    #     ]
+    # )
+
+
+    ld = LaunchDescription()
+
+    # Add the commands to the launch description
+    ld.add_action(gzserver_cmd)
+    ld.add_action(gzclient_cmd)
+    ld.add_action(robot_state_publisher_cmd)
+    ld.add_action(spawn_turtlebot_cmd)
+    ld.add_action(dummy_tb3_spawn)
+    ld.add_action(dummy_tb3_robot_state)
+    # ld.add_action(my_turtlebot3_drive)
+
+
+    return ld

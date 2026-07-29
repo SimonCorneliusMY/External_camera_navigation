@@ -14,9 +14,10 @@ find_package(rclcpp REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(sensor_msgs)
 find_package(cv_bridge)
+find_package(CURL REQUIRED)
 
 add_executable(camera_publisher src/camera_publisher.cpp)
-ament_target_dependencies(camera_publisher rclcpp OpenCV sensor_msgs cv_bridge)
+ament_target_dependencies(camera_publisher rclcpp OpenCV sensor_msgs cv_bridge CURL)
 
 add_executable(camera_subscriber src/camera_subscriber.cpp)
 ament_target_dependencies(camera_subscriber rclcpp OpenCV sensor_msgs cv_bridge)

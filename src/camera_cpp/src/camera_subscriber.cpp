@@ -4,6 +4,13 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
+/*
+29/7/26 Not used in this project, but can be used to subscribe to the camera image topic and display the images using OpenCV.
+You will need to manually change the topic name in the code
+*/
+
+
+
 class ImageSubscriber : public rclcpp::Node
 {
 public:
@@ -14,7 +21,7 @@ public:
         profile.best_effort();
         // Create the subscription to the /camera/image topic
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/camera/image",profile, std::bind(&ImageSubscriber::image_callback, this, std::placeholders::_1));
+            "/camera_0/image_raw",profile, std::bind(&ImageSubscriber::image_callback, this, std::placeholders::_1));
     }
 
 private:

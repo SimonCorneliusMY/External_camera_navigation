@@ -1,0 +1,12 @@
+# MovePath.action
+# Goal
+float32 path_length  # Length of the path in meters
+float32 linear_speed  # Linear speed for movement
+---
+# Result
+bool success
+int32 total_cycles
+---
+# Feedback
+float32 current_distance
+int32 current_direction  # 1 for forward, 2 for backward
