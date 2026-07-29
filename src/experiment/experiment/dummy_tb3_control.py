@@ -6,6 +6,14 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import math
 from enum import Enum
+import time
+import sys
+import signal
+
+"""
+29/7/2026 Feedforward system that moves TurtleBot3 back and forth for specified path_length 2.5m and speed 0.6m/s.
+Not used in experiment, but works
+"""
 
 LIN_VEL_STEP_SIZE = 0.1
 class Direction(Enum):
@@ -16,9 +24,11 @@ class Direction(Enum):
 class TurtleBot3PathMover(Node):
     def __init__(self):
         super().__init__('turtlebot3_path_mover')
+        # Initialize signal handler
+        signal.signal(signal.SIGINT, self.signal_handler)
         
         # Parameters (can be made configurable later)
-        self.declare_parameter('path_length', 3.5)  # path length in meters
+        self.declare_parameter('path_length', 2.5)  # path length in meters
         self.declare_parameter('linear_speed', 0.6)  # speed in m/s
         
         self.path_length = self.get_parameter('path_length').value
@@ -26,10 +36,10 @@ class TurtleBot3PathMover(Node):
         self.speed = 0.0
         
         # Publisher for velocity commands
-        self.cmd_vel_pub = self.create_publisher(Twist, 'dummy/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
         
         # Subscriber for odometry
-        self.odom_sub = self.create_subscription(Odometry,'dummy/odom',self.odom_callback,10)
+        self.odom_sub = self.create_subscription(Odometry,'odom',self.odom_callback,10)
             
         # State variables
         self.current_position = (0.0, 0.0)
@@ -101,6 +111,15 @@ class TurtleBot3PathMover(Node):
         twist_msg.angular.z = 0.0
         self.cmd_vel_pub.publish(twist_msg)
         self.get_logger().info('Robot stopped')
+    # when ctrl c is pressed rclpy shutdown is automatically called
+    # with this signal handler, this function is called first when ctrl c is pressed
+    def signal_handler(self, sig, frame):
+        self.get_logger().info('Stopping robot due to keyboard interrupt...')
+        self.stop_robot()
+        time.sleep(0.5)  # Give time for the stop command to be sent
+        self.destroy_node()
+        rclpy.shutdown()
+        sys.exit(0)
 
 def make_simple_profile(output, input, slop):
     if input - output > 0.005:
@@ -112,18 +131,18 @@ def make_simple_profile(output, input, slop):
 
     return output
 
+
+
 def main(args=None):
     rclpy.init(args=args)
     node = TurtleBot3PathMover()
-    
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('Node stopped by keyboard interrupt')
+        pass
+        
     finally:
-        node.stop_robot()
         node.destroy_node()
-        rclpy.shutdown()
 
 
 if __name__ == '__main__':
