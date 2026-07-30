@@ -53,6 +53,12 @@ using nav2_costmap_2d::LETHAL_OBSTACLE;
 using nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
 using nav2_costmap_2d::NO_INFORMATION;
 
+/*
+30/7/26 no longer working, no idea why
+Crops global map to local costmap size to be use in local costmap layer. Redundant
+*/
+
+
 namespace nav2_gradient_costmap_plugin1
 {
 
@@ -76,14 +82,15 @@ GradientLayer::onInitialize()
 
   node->get_parameter(name_ + "." + "enabled", enabled_);
 
+
   map_subscription_ = node->create_subscription<nav_msgs::msg::OccupancyGrid>(
     "/map", 10, std::bind(&GradientLayer::mapCallback, this, std::placeholders::_1) // the topic name /map for absolute without namespace while map includes namespace
   );
 
   need_recalculation_ = true;
   current_ = true;
-  cv::namedWindow("Image Display", cv::WINDOW_NORMAL);
-  cv::namedWindow("Resized", cv::WINDOW_NORMAL);
+  // cv::namedWindow("Image Display", cv::WINDOW_NORMAL);
+  // cv::namedWindow("Resized", cv::WINDOW_NORMAL);
 
 }
 
@@ -91,9 +98,11 @@ void GradientLayer::mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr ms
 {
   latest_map_ = msg;
   // Access the map dimensions
-  width = msg->info.width;
-  height = msg->info.height;
+  map_width = msg->info.width;
+  map_height = msg->info.height;
   resolution = msg->info.resolution;
+  origin_x = msg->info.origin.position.x;
+  origin_y = msg->info.origin.position.y;
   
 
 }
@@ -106,9 +115,9 @@ GradientLayer::updateBounds(
   double robot_x, double robot_y, double /*robot_yaw*/, double * min_x,
   double * min_y, double * max_x, double * max_y)
 {
-  // conversion from pixel coordinate to meters for real life
-  robot_x_ = robot_x/resolution; // 3.54/1203
-  robot_y_ = robot_y/resolution;
+  // conversion from meters to pixel coordinate and offset by origin
+  robot_x_ = (robot_x - origin_x)/resolution;
+  robot_y_ = (robot_y - origin_y)/resolution;
 
   // RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"), "Pose: %f, %f, Pose 2: %f, %f", robot_x_,robot_y_,robot_x,robot_y);
   if (need_recalculation_) {
@@ -184,40 +193,21 @@ GradientLayer::updateCosts(
   unsigned char * master_array = master_grid.getCharMap();
   // unsigned int size_x = master_grid.getSizeInCellsX(), size_y = master_grid.getSizeInCellsY();
 
-  // {min_i, min_j} - {max_i, max_j} - are update-window coordinates.
-  // These variables are used to update the costmap only within this window
-  // avoiding the updates of whole area.
-  // RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"), "Size: %d, %d, %d, %d", min_i,min_j,max_i,max_j);
-  // //determining the boundary points of the local costmap based on the global map
-  // min_i = robot_x_ - 784 / 2;
-  // max_i = robot_x_ + 784 / 2;
-  // min_j = robot_y_ - 784 / 2;
-  // max_j = robot_y_ + 784 / 2;
 
   
-
-  // for (int j = 0; j < 784; j++) {
-  //   for (int i = 0; i < 784; i++) {
-
-  //       // Get the corresponding 1D index for (i, j) position
-  //       int index = master_grid.getIndex(i, j);
-  //       // setting the bounds of costmap update
-  //       if (j+min_j >=0 && j+min_j <= height && i + min_i >= 0 && i+min_i<= width){
-  //         master_array[index] = latest_map_->data[((j+min_j) * width) + i + min_i];  
-  //       }
-  //   }
-  // }  
-  // determine the boundary of the global map
-  float boundary = 3/resolution/2;
-  float local_pixel_length = 3/resolution;
+  float half_width = master_grid.getSizeInCellsX()/2;
+  float half_height = master_grid.getSizeInCellsY()/2;
+  
 
   // RCLCPP_INFO(rclcpp::get_logger("nav2_gradient_costmap_plugin"),"%f,%f",boundary,local_pixel_length);
-  min_x = robot_x_ - boundary;
-  max_x = robot_x_ + boundary;
-  min_y = robot_y_ - boundary;
-  max_y = robot_y_ + boundary;
+  // Determine the local costmap boundary to update
+  min_x = robot_x_ - half_width;
+  max_x = robot_x_ + half_width;
+  min_y = robot_y_ - half_height;
+  max_y = robot_y_ + half_height;
 
   // determining the local costmap boundary to update
+  // local costmap is 0 to x and 0 to y if local is outside of global then we find the local costmap still within the global to update
   if(min_x < 0){
     min_i = -min_x;
   }else{
@@ -229,15 +219,15 @@ GradientLayer::updateCosts(
   }else{
     min_j = 0;
   }  
-  if (max_x > width){
-    max_i = local_pixel_length - max_x + width;
+  if (max_x > map_width){
+    max_i = master_grid.getSizeInCellsX() - max_x + map_width;
   }else{
-    max_i = local_pixel_length;
+    max_i = master_grid.getSizeInCellsX();
   }
-  if (max_y > height){
-    max_j = local_pixel_length - max_y + height;
+  if (max_y > map_height){
+    max_j = master_grid.getSizeInCellsY() - max_y + map_height;
   }else{
-    max_j = local_pixel_length;
+    max_j = master_grid.getSizeInCellsY();
   }
 
   for (int j = min_j; j < max_j; j++) {
@@ -246,7 +236,7 @@ GradientLayer::updateCosts(
         // Get the corresponding 1D index for (i, j) position
         int index = master_grid.getIndex(i, j);
         // setting the bounds of costmap update
-        if(latest_map_->data[((j+min_y) * width) + i + min_x] == 100){
+        if(latest_map_->data[((j+min_y) * map_width) + i + min_x] == 100){
           master_array[index] = LETHAL_OBSTACLE; 
         }
          
