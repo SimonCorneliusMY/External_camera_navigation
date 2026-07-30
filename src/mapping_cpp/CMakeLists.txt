@@ -24,9 +24,6 @@ find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
-# add_executable(map_merger_obstacle src/map_merger_obstacle.cpp)
-# ament_target_dependencies(map_merger_obstacle rclcpp nav_msgs PCL pcl_conversions sensor_msgs )
-
 add_executable(mapping_sim_cpp src/mapping_sim_top_down_cpp.cpp)
 ament_target_dependencies(mapping_sim_cpp rclcpp OpenCV sensor_msgs cv_bridge nav_msgs std_msgs rmw my_custom_msgs)
 
@@ -39,7 +36,6 @@ ament_target_dependencies(map_merger rclcpp sensor_msgs nav_msgs std_msgs tf2_ro
 install(TARGETS
   mapping_sim_cpp
   mapping_real_cpp
-  # map_merger_obstacle
   map_merger
   DESTINATION lib/${PROJECT_NAME}
 )
