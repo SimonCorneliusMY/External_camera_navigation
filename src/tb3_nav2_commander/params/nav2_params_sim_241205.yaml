@@ -136,8 +136,8 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.087
+      xy_goal_tolerance: 0.20
+      yaw_goal_tolerance: 0.4
     # DWB parameters
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
@@ -165,7 +165,7 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
-      xy_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.20
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
@@ -196,7 +196,7 @@ local_costmap:
       rolling_window: true
       width: 3
       height: 3
-      resolution: 0.00352843878
+      resolution: 0.006472727
       robot_radius: 0.22
       plugins: ["voxel_layer","gradient_layer","inflation_layer"]
       gradient_layer:
@@ -241,7 +241,7 @@ global_costmap:
       robot_base_frame: base_link
       use_sim_time: True
       robot_radius: 0.22
-      resolution: 0.00352843878
+      resolution: 0.006472727
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       gradient_layer:
