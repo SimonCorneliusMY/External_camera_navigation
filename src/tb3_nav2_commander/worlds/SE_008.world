@@ -99,7 +99,7 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
     <model name='SE008_room'>
-      <pose>4.62697 7.91476 0 0 -0 0</pose>
+      <pose>4.349776 7.649210 0 0 -0 0</pose>
       <link name='Wall_0'>
         <collision name='Wall_0_Collision'>
           <geometry>
@@ -1211,7 +1211,7 @@
               <size>9 0.15 2.9</size>
             </box>
           </geometry>
-          <pose>0 0 1.45 0 -0 0</pose>
+          <pose>0 -0.34 1.45 0 -0 0</pose>
           <max_contacts>10</max_contacts>
           <surface>
             <contact>
@@ -1227,7 +1227,7 @@
           </surface>
         </collision>
         <visual name='Wall_2_Visual'>
-          <pose>0 0 1.45 0 -0 0</pose>
+          <pose>0 -0.34 1.45 0 -0 0</pose>
           <geometry>
             <box>
               <size>9 0.15 2.9</size>
@@ -1255,7 +1255,7 @@
           <pose>-7.52652 0 1.45 0 -0 0</pose>
           <geometry>
             <box>
-              <size>0.546964 0.15 2.9</size>
+              <size>0.886964 0.15 2.9</size>
             </box>
           </geometry>
           <material>
@@ -1272,7 +1272,7 @@
         <collision name='Wall_3_Collision_0'>
           <geometry>
             <box>
-              <size>0.546964 0.15 2.9</size>
+              <size>0.886964 0.15 2.9</size>
             </box>
           </geometry>
           <pose>-7.52652 0 1.45 0 -0 0</pose>
@@ -1553,7 +1553,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>6.10958 9.369131 0 0 -0 0</pose>
+      <pose>5.73 9.925 0 0 -0 0</pose>
     </model>
     <model name='OMIS_cmd_ext'>
       <link name='link_4'>
@@ -1656,7 +1656,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>6.09936 5.717443 0 0 -0 0</pose>
+      <pose>5.724845 6.270643 0 0 -0 0</pose>
     </model>
     <model name='Container_product'>
       <link name='link_1'>
@@ -1759,7 +1759,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>4.90594 6.43434 0 0 -0 0</pose>
+      <pose>4.572655 7.067545 0 0 -0 0</pose>
     </model>
     <model name='3_door_cabinet'>
       <link name='link_1'>
@@ -1862,7 +1862,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>0.636667 12.7443 0 0 -0 0</pose>
+      <pose>0.2275 12.5646 0 0 -0 0</pose>
     </model>
     <model name='SMC'>
       <link name='link_0'>
@@ -1965,7 +1965,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>1.969770 6.148374 0.450000 0 -0 0</pose>
+      <pose>1.815 6.25 0.450000 0 -0 0</pose>
     </model>
     <model name='Wooden_table'>
       <link name='link_0'>
@@ -2068,7 +2068,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>0.732175 9.480273 0.454991 0 -0 0</pose>
+      <pose>0.467859 9.273488 0.454991 0 -0 0</pose>
     </model>
     <model name='Wooden_table_0'>
       <link name='link_0'>
@@ -2171,7 +2171,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>0.733599 11.300356 0.454991 0 -0 0</pose>
+      <pose>0.467859 11.094698 0.454991 0 -0 0</pose>
     </model>
     <model name='fridge'>
       <link name='link_5'>
@@ -2377,7 +2377,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>4.50083 14.313938 0 0 -0 0</pose>
+      <pose>4.2 14.7096 0 0 -0 0</pose>
     </model>
     <model name='rear_tables'>
       <link name='link_3'>
@@ -2402,7 +2402,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <box>
-              <size>7.225 0.95 1.2</size>
+              <size>7.07 0.95 1.2</size>
             </box>
           </geometry>
           <material>
@@ -2428,7 +2428,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <box>
-              <size>7.225 0.95 1.2</size>
+              <size>7.07 0.95 1.2</size>
             </box>
           </geometry>
           <surface>
@@ -2480,7 +2480,7 @@
       </link>
       <static>1</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>5.45315 2.59914 0 0 -0 0</pose>
+      <pose>5.3725 2.665 0 0 -0 0</pose>
     </model>
     <model name='short__2_door_cabinet'>
       <link name='link_4'>
@@ -2863,7 +2863,7 @@
       </link>
     </model>
     <model name='camera_1'>
-      <pose>4.52214 15.4772 2.79921 0.016187 0.672884 -1.93497</pose>
+      <pose>2.501 15.743 2.136 0.048685 0.582155 -1.453755</pose>
       <static>1</static>
       <link name='link'>
         <inertial>
@@ -2932,7 +2932,7 @@
       </link>
     </model>
     <model name='red_ball_0'>
-      <pose>1.3939 13.4298 0.046679 0 -0 0</pose>
+      <pose>1.1053393 5.5423393 0.046679 0 -0 0</pose>
       <link name='link_0'>
         <inertial>
           <mass>0.000813656</mass>
@@ -3035,7 +3035,7 @@
       <allow_auto_disable>1</allow_auto_disable>
     </model>
     <model name='red_ball_1'>
-      <pose>4.85177 13.4298 0.046679 0 -0 0</pose>
+      <pose>4.6753393 5.5423393 0.046679 0 -0 0</pose>
       <link name='link_0'>
         <inertial>
           <mass>0.000813656</mass>
@@ -3138,7 +3138,7 @@
       <allow_auto_disable>1</allow_auto_disable>
     </model>
     <model name='red_ball_2'>
-      <pose>1.3939 9.07011 0.07967 0 -0 0</pose>
+      <pose>1.1053393 9.5423393 0.07967 0 -0 0</pose>
       <link name='link_0'>
         <inertial>
           <mass>0.000813656</mass>
@@ -3241,7 +3241,7 @@
       <allow_auto_disable>1</allow_auto_disable>
     </model>
     <model name='red_ball_3'>
-      <pose>4.85177 9.07011 0.07967 0 -0 0</pose>
+      <pose>4.6753393 9.5423393 0.07967 0 -0 0</pose>
       <link name='link_0'>
         <inertial>
           <mass>0.000813656</mass>
@@ -3344,7 +3344,7 @@
       <allow_auto_disable>1</allow_auto_disable>
     </model> 
     <model name='red_ball_4'>
-      <pose>1.3939 5.43713 0.046679 0 -0 0</pose>
+      <pose>1.1053393 13.5423393 0.046679 0 -0 0</pose>
       <link name='link_0'>
         <inertial>
           <mass>0.000813656</mass>
@@ -3447,7 +3447,7 @@
       <allow_auto_disable>1</allow_auto_disable>
     </model>
     <model name='red_ball_5'>
-      <pose>4.85177 5.43713 0.046679 0 -0 0</pose>
+      <pose>4.6753393 13.5423393 0.046679 0 -0 0</pose>
       <link name='link_0'>
         <inertial>
           <mass>0.000813656</mass>
@@ -3639,7 +3639,17 @@
     </actor>     -->
     <include>
       <uri>model://box_cover_test2</uri>
-      <pose>1.0 8.0 0.1 0.0 0.0 0.0</pose>
+      <pose>1.605339 10.042339 0.1 0.0 0.0 0.0</pose>
     </include>
+    <include>
+      <uri>model://A4_paper_box</uri>
+      <pose>3.105339 8.542339 0.15</pose>
+    </include>
+
+
+
+
+
+
   </world>
 </sdf>
