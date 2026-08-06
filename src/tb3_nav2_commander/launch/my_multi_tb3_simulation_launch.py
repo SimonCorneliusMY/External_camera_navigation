@@ -26,28 +26,33 @@ from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
+
 def generate_launch_description():
 
     sim_0 = [[502,202,1076,226,171,531,1278,640],[0,0,1112,0,0,1163,1112,1163]]
-    sim_0_low_res = [[502,202,1076,226,171,531,1278,640],[0,0,980,0,0,1030,980,1030]]
-    sim_1 = [[196,115,730,26,286,718,1220,424],[0,0,980,0,0,1236,980,1236]]
+    sim_0_low_res = [[502,202,1076,226,171,531,1278,640],[0,0,541,0,0,568,541,568]]
+    sim_1_low_res = [[196,115,730,26,286,718,1220,424],[0,0,541,0,0,682,541,682]]
+    sim_0_high_res = [[484,185,1034,205,115,510,1210,618],[0,0,550,0,0,618,550,618]]
+    sim_1_high_res = [[392,80,1000,78,13,542,1275,585],[0,0,550,0,0,618,550,618]]
     sim_0_Large = [[636,73,1000, 77,171,531,1278,640],[0,0,1112,0,2855,0,1112,2855]]
     real_0 = [[598,134,903,169,163,457,1079,619],[0,0,1203,0,0,2869,1203,2869]]
 
     res_real_0 = 3.57/930   #3.54/1203
     res_sim_0 = 3.45787/1112
-    res_sim_1 = 3.45787/980
+    res_sim_1 = 3.56/550
+    low_res_0 = 3.45787/575.00
+    low_res_1 = 3.45787/541.00
 
-    tf_sim_0 = ["0", "3.633", "0", "3.14159", "0", "0"]
-    tf_sim_1 = ["3.45787", "3.633", "0", "0", "3.14159", "0"]
+    tf_sim_0 = ["0", "4.0", "0", "3.14159", "0", "0"]
+    tf_sim_1 = ["3.56", "4.0", "0", "0", "3.14159", "0"]
     tf_sim_0_large = ["0", "7.99", "0", "3.14159", "0", "0"]
     tf_real_0 = ["0", "8.24", "0", "3.14159", "0", "0"]
 
     tf = [tf_sim_0, tf_sim_1]
     resolutions = [res_sim_1,res_sim_1]
     camera_addresses = ["0","1"]
-    homographic_ori_points = [sim_0_low_res[0],sim_1[0]]
-    homographic_transformed_points = [sim_0_low_res[1],sim_1[1]]
+    homographic_ori_points = [sim_0_high_res[0],sim_1_high_res[0]]
+    homographic_transformed_points = [sim_0_high_res[1],sim_1_high_res[1]]
     # Get the launch directory
     bringup_dir = get_package_share_directory('tb3_nav2_commander')
     launch_dir = os.path.join(bringup_dir, 'launch')
@@ -118,7 +123,8 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_sim_241205.yaml'),
+        # default_value=os.path.join(bringup_dir, 'params', 'nav2_params_sim_241205.yaml'),
+        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_sim_MPPI_250327.yaml'),
         # default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
@@ -210,10 +216,13 @@ def generate_launch_description():
         executable='map_merger',
         name='map_merger',
         output = 'screen',
-        parameters= [{'resolution': 3.45787/980},
+        parameters= [{'resolution': resolutions[0]},
                      {'camera_addresses': camera_addresses},
                      {'use_sim_time': use_sim_time}]
     )
+
+
+
     gazebo_turtlebot_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             '/home/tarumt2204/External_camera_navigation/src/tb3_nav2_commander/launch/my_world.launch.py'),
@@ -244,13 +253,33 @@ def generate_launch_description():
 
     # Create the launch description and populate
     i = 0
+
+    # You will need to launch target_pose node on your own as it is not include in the launch file
+    # This node merely detects the target, in this case fire hydrant
+    target_pose = Node(
+        package='my_localizer',
+        executable='localizer_real',  # Replace with your executable name
+        name=f'localizer_real_target',  # Unique name for each instance
+        output='screen',
+        parameters=[{'name': '0'},
+                    {'show_homographic_region': True},
+                    {'record': False},
+                    {'publish_pose_tf': False},
+                    {'use_sim_time': use_sim_time},
+                    {'resolution': resolutions[i]},
+                    {'homographic_ori_points': homographic_ori_points[i]},
+                    {'homographic_transformed_points': homographic_transformed_points[i]},
+                    {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/yolov8n.pt"}]
+    )
+
     for camera_address in camera_addresses:
         # Static tf publisher option 1, use tf2_ros package, this creates a new node for each static tf, option 2, write the static tf in camera
         ld.add_action(
             Node(
                 package='tf2_ros',
                 executable='static_transform_publisher',
-                arguments = ['--x', tf[i][0], '--y', tf[i][1], '--z', tf[i][2], '--roll', tf[i][3], '--pitch', tf[i][4], '--yaw', tf[i][5], '--frame-id', 'map', '--child-frame-id', f"map_{i}"]
+                arguments = ['--x', tf[i][0], '--y', tf[i][1], '--z', tf[i][2], '--roll', tf[i][3], '--pitch', tf[i][4], '--yaw', tf[i][5], '--frame-id', 'map', '--child-frame-id', f"map_{i}"],
+                parameters= [{'use_sim_time' : use_sim_time}]
             )
         )
 
@@ -276,13 +305,14 @@ def generate_launch_description():
                 name=f'localizer_real_{i}',  # Unique name for each instance
                 output='screen',
                 parameters=[{'name': f'{i}'},
-                            {'show_homographic_region': False},
+                            {'show_homographic_region': True},
                             {'record': False},
                             {'publish_pose_tf': False},
                             {'use_sim_time': use_sim_time},
                             {'resolution': resolutions[i]},
                             {'homographic_ori_points': homographic_ori_points[i]},
-                            {'homographic_transformed_points': homographic_transformed_points[i]}]
+                            {'homographic_transformed_points': homographic_transformed_points[i]},
+                            {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_sim_251103/weights/best.pt"}]
             )
         )
         
@@ -298,7 +328,8 @@ def generate_launch_description():
                             {'show_fps': False},
                             {'use_sim_time': use_sim_time},
                             {'HSV': [10, 0, 0, 30, 255, 255]},
-                            {'inflation': 17},
+                            {'inflation': 10},
+                            {'age_penalty': 0.4},
                             {'resolution': resolutions[i]},
                             {'homographic_ori_points': homographic_ori_points[i]},
                             {'homographic_transformed_points': homographic_transformed_points[i]}],
@@ -342,6 +373,7 @@ def generate_launch_description():
     ld.add_action(gazebo_turtlebot_cmd)
     ld.add_action(pose_aggregator)
     ld.add_action(map_merger)
+    # ld.add_action(target_pose)
 
 
     return ld

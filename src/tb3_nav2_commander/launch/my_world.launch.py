@@ -18,6 +18,11 @@
 
 
 # Adapted: Simon Peter Cornelius
+'''
+6/8/26
+Launches SE008 room with turtlebot3
+Used in my_multi_tb3_simulation_launch
+'''
 
 import os
 
@@ -34,10 +39,8 @@ def generate_launch_description():
     pkg_turtlebot3_gazebo = get_package_share_directory('turtlebot3_gazebo')
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    # x_pose = LaunchConfiguration('x_pose', default='3.503241')
-    # y_pose = LaunchConfiguration('y_pose', default='9.331408')
-    x_pose = LaunchConfiguration('x_pose', default='3.503241')
-    y_pose = LaunchConfiguration('y_pose', default='10.331408')
+    x_pose = LaunchConfiguration('x_pose', default='3.105339')
+    y_pose = LaunchConfiguration('y_pose', default='11.042339')
     urdf = os.path.join(pkg_turtlebot3_gazebo, 'urdf', 'turtlebot3_burger.urdf')
     with open(urdf, 'r') as infp:
         robot_description = infp.read()
@@ -91,8 +94,10 @@ def generate_launch_description():
         arguments=[
             '-entity', 'dummy_tb3',
             '-file', urdf_path,
-            '-x', '1.0',
-            '-y', '8.0',
+            # '-x', '2.0',
+            # '-y', '10.0',
+            '-x', '1.605339',
+            '-y', '10.042339',
             '-z', '0.0',
             '-robot_namespace', 'dummy'
         ],
@@ -110,32 +115,8 @@ def generate_launch_description():
         }]
     )
         
-    # rviz_cmd = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(launch_dir, 'rviz_launch.py')),
-    #     condition=IfCondition(use_rviz),
-    #     launch_arguments={'namespace': namespace,
-    #                       'use_namespace': use_namespace,
-    #                       'rviz_config': rviz_config_file}.items())
 
 
-
-    # teleop = Node(
-    #     package= 'turtlebot3_teleop',
-    #     executable='teleop_keyboard'
-        
-    # )
-    # #restarts the node to utilize the overlay files instead.
-    # my_turtlebot3_drive = Node(
-        
-    #     package = 'turtlebot3_gazebo',
-    #     executable='turtlebot3_drive',
-    #     name='turtlebot3_diff_drive',
-    #     remappings=[
-    #         ('/cmd_vel','/cmd_vel222'),
-    #         ('/tf','/none'),
-    #     ]
-    # )
 
 
     ld = LaunchDescription()
@@ -145,8 +126,9 @@ def generate_launch_description():
     ld.add_action(gzclient_cmd)
     ld.add_action(robot_state_publisher_cmd)
     ld.add_action(spawn_turtlebot_cmd)
-    ld.add_action(dummy_tb3_spawn)
-    ld.add_action(dummy_tb3_robot_state)
+    
+    # ld.add_action(dummy_tb3_spawn)        # uncomment to spawn another turtlebot3
+    # ld.add_action(dummy_tb3_robot_state)  # uncomment to spawn another turtlebot3
     # ld.add_action(my_turtlebot3_drive)
 
 

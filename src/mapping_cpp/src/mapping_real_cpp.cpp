@@ -22,18 +22,17 @@
 #include <geometry_msgs/msg/point_stamped.hpp>
 
 
-#include <iostream>
-#include <chrono>
-#include <vector>
-#include <algorithm>
-#include <iostream>
-#include <chrono>
-#include <vector>
 #include <algorithm>
 #include <numeric>
 
 using std::placeholders::_1;
 using std::placeholders::_2;
+
+/*
+30/7/26 Maps RGB image to occupancy grid map, uses YOLO bounding box to remove TurtleBot3 from map
+void obstacles() is not used in ExPeNav2
+*/
+
 
 class FPSCounter
 {
@@ -185,28 +184,22 @@ private:
             switch((bbox->header.frame_id == "No objects detected" )+ within_map()){
                 case 1:{
                     mapping(cv_ptr,bounding_box);
-                    print_once = false;
+                    // print_once = false;
                     break;
                 }
                 case 2:{
                     return;
                 }
                 case 0:{
-                    if (!print_once){
-                        RCLCPP_INFO(this->get_logger(),"YOLO false positive, try increasing confidence threshold in localizer node");
-                        print_once = true;
-                    }
-                    return;
+                    // if (!print_once){
+                    //     RCLCPP_INFO(this->get_logger(),"YOLO false positive, try increasing confidence threshold in localizer node");
+                    //     print_once = true;
+                    // }
+                    // return;
+                    mapping(cv_ptr,bounding_box);
                 }
             }
-            // if((bounding_box.empty() + within_map()) != 0){
-            //     mapping(cv_ptr,bounding_box);
-            //     print_once = false;
-            // }else if((bounding_box.empty() + within_map()) == 0 && !print_once){
-            //     RCLCPP_INFO(this->get_logger(),"YOLO false positive, try increasing confidence threshold in localizer node");
-            //     print_once = true;
-            //     return;
-            // }
+
             
 
         }
@@ -324,18 +317,16 @@ private:
 
 
         mask = HSV_thresholding(hsv, hsv_values);
-        // For multiple HSV values
+
+        // For multiple HSV values       
         
-        cv::Mat mask_temp;
-        if (hsv_values.size() > 6 && hsv_values.size() % 6 == 0){            
+        if (hsv_values.size() > 6 && hsv_values.size() % 6 == 0){  
+            cv::Mat mask_temp;          
             for (u_int64_t i = 6; i < hsv_values.size(); i+=6){
                 mask_temp = HSV_thresholding(hsv, std::vector<int64_t>(hsv_values.begin()+i,hsv_values.begin()+i+6));
                 cv::bitwise_or(mask,mask_temp,mask);
             }
         }
-        
-
-        // cv::inRange(hsv, cv::Scalar(hsv_values[0], hsv_values[1], hsv_values[2]), cv::Scalar(hsv_values[3], hsv_values[4], hsv_values[5]), mask);
         
 
         TB3_pixel_inflation = this->get_parameter("inflation").get_value<int>();
@@ -354,9 +345,9 @@ private:
             cv::rectangle(mask, bbox, cv::Scalar(255, 255, 255), cv::FILLED);
             
         }
-        
         // Apply the perspective transform
         cv::warpPerspective(mask, homo_transform, M, cv::Size(pts_homo[6], pts_homo[7]));
+
         // make it a mask again because interpolation in warpPerspective
         cv::threshold(homo_transform,homo_transform,cv::THRESH_BINARY_INV | cv::THRESH_OTSU,100,cv::ThresholdTypes::THRESH_BINARY_INV);
 
@@ -369,10 +360,6 @@ private:
         map.header.stamp = this->get_clock()->now();
         map.info.height = homo_transform.rows;
         map.info.width = homo_transform.cols;
-        // map.info.resolution = 3.54/1203; // 3.54/1203
-        // map.info.origin.orientation.x = transform.transform.rotation.x;;
-        // map.info.origin.orientation.y = transform.transform.rotation.y;;
-        // map.info.origin.orientation.z = transform.transform.rotation.z;;
         map.info.origin.orientation.w = 1.0;;
         map.info.origin.position.x = 0.0;
         map.info.origin.position.y = 0.0;
@@ -562,7 +549,7 @@ private:
 
     cv::Point2f pose_xy_homo;
     cv::Point2f pose_xy_pixels_homo;
-    double low_resolution, map_transition_length = 0.5,age_penalty;
+    double low_resolution, map_transition_length = 0.1,age_penalty;
 
     std::chrono::steady_clock::time_point t1, t2, t3 ;
     cv::Mat homo_transform, M, hsv, mask, mask_open, maze_bw_flip;

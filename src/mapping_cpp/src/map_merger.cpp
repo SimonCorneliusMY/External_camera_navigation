@@ -9,6 +9,17 @@
 #include <string>
 #include <memory>
 #include <opencv2/opencv.hpp>
+#include <chrono>
+#include <algorithm>
+#include <numeric>
+
+/*
+30/7/26 Merges map together, by specified transform of the maps(how the map is arranged).
+Copies each map into larger merged map with added obstacle border
+void obstacles() is not used in ExPeNav2
+*/
+
+
 class MapMergerNode : public rclcpp::Node
 {
 public:
@@ -32,9 +43,8 @@ public:
         merged_map.info.origin.position.z = 0.0;
         merged_map.info.origin.orientation.w = 1.0;  // Identity quaternion
 
-        border_size = inflation_radius_/resolution/2;
+        border_pix_size = inflation_radius_/resolution/2;
 
-        // merged_map_cv = cv::Mat(2266,980, CV_8UC1, cv::Scalar(255));
 
         // Set QoS profile
         rclcpp::QoS qos_profile_reliable(rclcpp::KeepLast(1));
@@ -102,17 +112,20 @@ private:
         }
         // merge maps
         mergeMaps();
-        obstacles();
+        // obstacles();
 
     }
-
+    // I think it was to feed local costmap obstacle data but didnt work properly, provide PointCloud2 message of occupied cells in merged map
+    // Not used in ExPeNav2 at the moment
     void obstacles(){
         // clear points to avoid build up of data in it.
         points.clear();
         
         // Set the header of the point cloud
-        obstacle.header.stamp = rclcpp::Clock().now();
+        obstacle.header.stamp = this->now();
         obstacle.header.frame_id = "map"; // Set the frame_id for the point cloud
+        
+        
         
         // Set height and width of the point cloud
         obstacle.height = 1;  // Single row of points (unordered)
@@ -202,16 +215,7 @@ private:
         for(const auto& map:maps_){
             transform_map(map.second,transforms_[map.first]);
         }
-        // Add border to merged map
-        // cv::Mat merged_map_cv_border;
-        // cv::copyMakeBorder(merged_map_cv, merged_map_cv_border,1,1,1,1, cv::BORDER_CONSTANT, 0);
-        // RCLCPP_INFO(this->get_logger(),"Size: %d, %d", merged_map_cv_border.rows, merged_map_cv_border.cols);
-        // RCLCPP_INFO(this->get_logger(),"Size: %d, %d", merged_map_cv.rows, merged_map_cv.cols);
-        // // cv::imshow("Merged Map", merged_map_cv_border);
-        // cv::waitKey(1);
-        
-        // Fill in merged map parameters and publish     
-        // cv::rectangle(merged_map_cv, cv::Rect(0,0,merged_map_cv.cols,merged_map_cv.rows),0,100);
+
         merged_map.header.stamp = this->now();
         merged_map.data.assign(merged_map_cv.begin<int8_t>(), merged_map_cv.end<int8_t>());
         merged_map_publisher_->publish(merged_map);
@@ -254,13 +258,15 @@ private:
         double width = max_x - min_x;
         double height = max_y - min_y;
 
-        // Set the merged map height and width
-        merged_map.info.set__height(static_cast<unsigned int>(std::round(height+border_size)));
-        merged_map.info.set__width(static_cast<unsigned int>(std::round(width+border_size)));
-        merged_map.info.origin.position.set__x(min_x*resolution);
-        merged_map.info.origin.position.set__y(min_y*resolution);
+        // Set the merged map height and width with border size
+        merged_map.info.set__height(static_cast<unsigned int>(std::round(height+border_pix_size*2)));
+        merged_map.info.set__width(static_cast<unsigned int>(std::round(width+border_pix_size*2)));
+        // Set origin position to include border without shifting the map
+        merged_map.info.origin.position.set__x(min_x*resolution - border_pix_size*resolution);
+        merged_map.info.origin.position.set__y(min_y*resolution - border_pix_size*resolution);
         // initialize merged map as single channel with all obstacles (100 as obstacle)
         merged_map_cv = cv::Mat(merged_map.info.height,merged_map.info.width, CV_8UC1, cv::Scalar(0));
+        // A border of 1 pixel is created around the cv merged map, cv map is only positive values
         cv::rectangle(merged_map_cv, cv::Rect(0,0,merged_map_cv.cols,merged_map_cv.rows),100,1);
         RCLCPP_INFO(this->get_logger(),"Map: Width: %d , Height: %d", merged_map.info.width,merged_map.info.height);
     }
@@ -290,7 +296,8 @@ private:
                     int new_y = static_cast<int>(point_in_world.y - merged_map.info.origin.position.y/resolution);
 
                     // Ensure indices are within bounds
-                    if (new_x > border_size && new_x < merged_map_cv.cols-border_size && new_y > border_size && new_y < merged_map_cv.rows-border_size) {
+                    if (new_x > border_pix_size && new_x < merged_map_cv.cols-border_pix_size && 
+                        new_y > border_pix_size && new_y < merged_map_cv.rows-border_pix_size) {
                         // Get the occupancy value and set the transformed map
                         int index = i * width + j;
                         // Use AND logic to combine free space to existing merged map
@@ -342,7 +349,7 @@ private:
     bool print_once = false;
     float resolution;
     double inflation_radius_;
-    int border_size;
+    int border_pix_size;
     // std::vector<int64_t> size;
     std::vector<cv::Mat> maps_cv;
     cv::Mat merged_map_cv ;

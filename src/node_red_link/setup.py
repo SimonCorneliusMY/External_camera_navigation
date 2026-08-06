@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'my_localizer'
+package_name = 'node_red_link'
 
 setup(
     name=package_name,
@@ -20,9 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pose_aggregator = my_localizer.pose_aggregator:main',
-            'localizer_real = my_localizer.localizer_real:main',
-            'target_pose = my_localizer.target_pose:main'
+            'node_red_link = node_red_link.node_red_link:main',
         ],
     },
 )

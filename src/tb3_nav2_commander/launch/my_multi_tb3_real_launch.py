@@ -19,44 +19,57 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
 
     #250507 desktop camera
-    real_0_high = [[424,143,997,180,22,471,1216,600],[0,0,938,0,0,1054,938,1054]]#[0,0,1201,0,0,1349,1201,1349]]
-    real_0_low =[[424,143,997,180,22,471,1216,600],[0,0,574,0,0,641,574,641]]
-    res_real_0_low = 3.58/574
-    res_real_0_high = 3.56/1201
+    res_real_0_high = 0.05
+    res_real_pi_high = 0.05
+    # tf_real_0_4m = ["0","4","0", "3.14159", "0", "0"]
     tf_real_0_4m = ["0","4","0", "3.14159", "0", "0"]
-
-    #250514 pi camera
-    real_pi_high = [[407,142,892,133,169,498,1107,497],[0,0,938,0,0,1054,938,1054]]
-    real_pi_low = [[407,142,892,133,169,498,1107,497],[0,0,485,0,0,542,485,542]]
-    res_real_pi_high = 3.56/938
-    res_real_pi_low = 3.58/485
     tf_real_pi_4m = ["3.56", "4", "0", "0", "3.14159", "0"]
+    real_0_high = [[436,133,1013,162,41,462,1248,579],[0,0,71,0,0,80,71,80]]
+    real_pi_high = [[356,193,838,193,98,537,1051,557],[0,0,71,0,0,80,71,80]]
 
-    real_0 = [[598,134,903,169,163,457,1079,619],[0,0,930,0,0,2147,930,2147]]
-    res_real_0 = 3.57/930   #3.54/1203
+    # 250605 5m length overlap of 2m
+    real_0_high_5m = [[462,96,972,134,21,465,1215,591],[0,0,431,0,0,605,431,605]]
+    real_1_high_5m = [[437,102,868,96,169,499,1107,497],[0,0,431,0,0,605,431,605]]
+    res_real_0_5m_low = 3.56/431
+    res_real_1_5m_low = 3.56/511
+    tf_real_0_5m = ["0","5","0", "3.14159", "0", "0"]
+    tf_real_pi_5m = ["3.56", "3", "0", "0", "3.14159", "0"]
+
+    #250717 testing 0.05 resolution
+    # real_0_high = [[413,141,994,164,21,477,1227,578],[0,0,71,0,0,80,71,80]]
+    # real_pi_high = [[407,142,890,129,165,497,1105,495],[0,0,71,0,0,80,71,80]]
+
+    
+
 
     resolutions = [res_real_0_high,res_real_pi_high]
+    # resolutions = [res_real_0_5m_low,res_real_1_5m_low]
     low_resolution = max(resolutions)
     camera_addresses = ["0","5000"]
-    HSV_values = [[10, 0, 0, 30, 255, 255], [20, 0, 0, 70, 255, 255, 70,0 ,0,109,63,255]]
+    HSV_values = [[10, 50, 65, 27, 135, 255], [20, 0, 20, 130, 255, 180]]
+    # HSV_values = [[14, 24, 105, 40, 255, 255, 40, 0, 0, 179, 255, 255], [20, 0, 67, 111, 68, 176]]   #for reaction test to ignore white obstacles on desktop cam
+
     homographic_ori_points = [real_0_high[0],real_pi_high[0]]
     homographic_transformed_points = [real_0_high[1],real_pi_high[1]]
 
     tf = [tf_real_0_4m,tf_real_pi_4m]
+    # tf = [tf_real_0_5m,tf_real_pi_5m]
 
     # Get the launch directory
     bringup_dir = get_package_share_directory('tb3_nav2_commander')
     launch_dir = os.path.join(bringup_dir, 'launch')
+    ros_bridge_dir = get_package_share_directory('rosbridge_server')
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
 
     # Create the launch configuration variables
@@ -124,7 +137,8 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_240123.yaml'),
+        # default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_240123.yaml'),
+        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_MPPI_250606.yaml'),
         # default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
@@ -143,7 +157,7 @@ def generate_launch_description():
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         'rviz_config_file',
         default_value=os.path.join(
-            bringup_dir, 'rviz', 'my_default_view.rviz'),
+            bringup_dir, 'rviz', 'my_default_view_real_experiment.rviz'),
         description='Full path to the RVIZ config file to use')
 
 
@@ -169,6 +183,26 @@ def generate_launch_description():
     ld = LaunchDescription()
     ld.add_action(declare_use_sim_time_cmd)
     i = 0
+
+    target_pose = Node(
+        package='my_localizer',
+        executable='localizer_real',  # Replace with your executable name
+        name=f'localizer_real_target',  # Unique name for each instance
+        output='screen',
+        respawn=True,                            # <-- restart if it crashes
+        respawn_delay=2.0, 
+        parameters=[{'name': '0'},
+                    {'show_homographic_region': True},
+                    {'record': False},
+                    {'publish_pose_tf': False},
+                    {'use_sim_time': use_sim_time},
+                    {'resolution': low_resolution},
+                    {'homographic_ori_points': homographic_ori_points[i]},
+                    {'homographic_transformed_points': homographic_transformed_points[i]},
+                    {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/yolov8m.pt"},
+                    {'YOLO_confidence_threshold': 0.2}]
+    )
+
     for camera_address in camera_addresses:
         # Static tf publisher option 1, use tf2_ros package, this creates a new node for each static tf, option 2, write the static tf in camera
         ld.add_action(
@@ -200,6 +234,8 @@ def generate_launch_description():
                 executable='localizer_real',  # Replace with your executable name
                 name=f'localizer_real_{i}',  # Unique name for each instance
                 output='screen',
+                respawn=True,                            # <-- restart if it crashes
+                respawn_delay=2.0, 
                 parameters=[{'name': f'{i}'},
                             {'show_homographic_region': True},
                             {'record': False},
@@ -207,7 +243,11 @@ def generate_launch_description():
                             {'use_sim_time': use_sim_time},
                             {'resolution': low_resolution},
                             {'homographic_ori_points': homographic_ori_points[i]},
-                            {'homographic_transformed_points': homographic_transformed_points[i]}]
+                            {'homographic_transformed_points': homographic_transformed_points[i]},
+                            {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/2880/weights/best.pt"},
+                            {'YOLO_confidence_threshold': 0.7}]
+                            # {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_v5/weights/best.pt"}]
+                            # {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/yolov8n.pt"}]
             )
         )
         
@@ -224,8 +264,10 @@ def generate_launch_description():
                             {'use_sim_time': use_sim_time},
                             {'HSV': HSV_values[i]},
                             {'inflation': 17},
+                            {'age_penalty': 0.04},
                             {'resolution': low_resolution},
                             {'low_resolution': low_resolution},
+                            {'morph_size': 2},
                             {'homographic_ori_points': homographic_ori_points[i]},
                             {'homographic_transformed_points': homographic_transformed_points[i]}],
                 # condition = UnlessCondition(use_sim_time)
@@ -282,6 +324,28 @@ def generate_launch_description():
                           'use_composition': use_composition,
                           'use_respawn': use_respawn}.items())
 
+    # There were problems with launching node_red_link and web_video_server in this launch file
+    # Better to run them separately in another terminal.
+    node_red_link = Node(
+        package='node_red_link',
+        executable='node_red_link',
+        name='node_red_link',
+        output = 'screen'
+    )
+    # to stream camera feed to http port
+    web_video_server = Node(
+        package='web_video_server',
+        executable='web_video_server',
+        name='web_video_server',
+        output = 'screen'
+    )   
+    # to establish websocket connection to node red
+    rosbridge_websocket = IncludeLaunchDescription(
+        XMLLaunchDescriptionSource(
+            os.path.join(ros_bridge_dir,'launch', 'rosbridge_websocket_launch.xml')))
+        # launch_arguments={'namespace': namespace,
+        #                   'use_namespace': use_namespace,
+        #                   'use_sim_time': use_sim_time}.items())
     # Create the launch description and populate
     
 
@@ -296,33 +360,24 @@ def generate_launch_description():
     ld.add_action(declare_use_composition_cmd)
 
     ld.add_action(declare_rviz_config_file_cmd)
-    # ld.add_action(declare_use_simulator_cmd)
-    # ld.add_action(declare_use_robot_state_pub_cmd)
     ld.add_action(declare_use_rviz_cmd)
-    # ld.add_action(declare_simulator_cmd)
-    # ld.add_action(declare_world_cmd)
     ld.add_action(declare_robot_name_cmd)
-    # ld.add_action(declare_robot_sdf_cmd)
     ld.add_action(declare_use_respawn_cmd)
 
     # Add any conditioned actions
-    # ld.add_action(start_gazebo_server_cmd)
-    # ld.add_action(start_gazebo_client_cmd)
-    # ld.add_action(gzclient_cmd)
-    # ld.add_action(gzserver_cmd)
-    # ld.add_action(start_gazebo_spawner_cmd)
-    # ld.add_action(camera)
-    # ld.add_action(statif_tf)
+
     ld.add_action(map_to_odom_tf)
     ld.add_action(pose_aggregator)
     ld.add_action(map_merger)
-    # ld.add_action(localizer)
-    # ld.add_action(mapping)
+    # ld.add_action(target_pose)
+
 
     # Add the actions to launch all of the navigation nodes
-    # ld.add_action(start_robot_state_publisher_cmd)
     ld.add_action(rviz_cmd)
     ld.add_action(bringup_cmd)
+    # ld.add_action(node_red_link)
+    # ld.add_action(TimerAction(period = 5.0, actions=[web_video_server]))
+    # ld.add_action(TimerAction(period = 10.0, actions=[rosbridge_websocket]))
     # ld.add_action(gazebo_turtlebot_cmd)
 
     return ld

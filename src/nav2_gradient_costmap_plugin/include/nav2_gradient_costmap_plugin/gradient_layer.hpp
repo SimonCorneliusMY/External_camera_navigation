@@ -83,9 +83,9 @@ public:
 
 private:
   nav_msgs::msg::OccupancyGrid::SharedPtr latest_map_;
-  int width ;
-  int height ;
-  float resolution;
+  int map_width ;
+  int map_height ;
+  float resolution, origin_x, origin_y;
   
   
   // Access the 1D occupancy grid data
