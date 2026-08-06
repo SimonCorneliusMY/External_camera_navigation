@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+'''
+6/8/26
+Spawns 2 turtlebot3 in empty workd
+'''
 
 import os
 from launch import LaunchDescription
@@ -29,18 +33,7 @@ def generate_launch_description():
             'pause': 'false'
         }.items()
     )
-    gzclient_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
-        )
-    )
 
-    gzserver_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
-        ),
-        launch_arguments={'world': world_path}.items()
-    )
     # Robot spawning configurations
     robots = [
         {
@@ -97,27 +90,10 @@ def generate_launch_description():
         )
         )
 
-    start_gazebo_ros_spawner_cmd = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        namespace='test',
-        arguments=[
-            '-entity', 'burger',
-            '-file', urdf_path,
-            '-x', '0.0',
-            '-y', '0.0',
-            '-z', '0.01',
-            '-robot_namespace','robot1',
-        ],
-        output='screen',
-            
-            
-        )
 
 
     # Combine all launch actions
     ld.add_action(gazebo)
 
-    # ld.add_action(start_gazebo_ros_spawner_cmd)
 
     return ld
