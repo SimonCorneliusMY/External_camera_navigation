@@ -312,7 +312,8 @@ def generate_launch_description():
                             {'resolution': resolutions[i]},
                             {'homographic_ori_points': homographic_ori_points[i]},
                             {'homographic_transformed_points': homographic_transformed_points[i]},
-                            {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_sim_251103/weights/best.pt"}]
+                            # {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_sim_251103/weights/best.pt"}]
+                            {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/2880/weights/best.pt"}]
             )
         )
         
