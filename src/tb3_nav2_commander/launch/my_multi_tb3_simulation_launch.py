@@ -206,7 +206,7 @@ def generate_launch_description():
         executable='pose_aggregator',
         name='pose_aggregator',
         output = 'screen',
-        parameters = [{'robot_name': 'Turtlebot3-sim'},
+        parameters = [{'robot_name': 'TurtleBot3'},
                      {'num_cameras': 2},
                      {'use_sim_time': use_sim_time}]
         )
