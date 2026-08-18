@@ -1,0 +1,8 @@
+image: my_map_sim_250724.pgm
+mode: trinary
+resolution: 0.05
+# origin: [-0.171, -0.0222, 0]
+origin: [0, 0, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25
