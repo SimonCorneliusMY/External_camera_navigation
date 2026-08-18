@@ -225,7 +225,7 @@ def generate_launch_description():
 
     gazebo_turtlebot_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            '/home/tarumt2204/External_camera_navigation/src/tb3_nav2_commander/launch/my_world.launch.py'),
+            os.path.join(bringup_dir, 'launch', 'my_world.launch.py')),
         
         )
 
