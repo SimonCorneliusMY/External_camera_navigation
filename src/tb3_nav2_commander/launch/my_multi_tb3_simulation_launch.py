@@ -113,7 +113,7 @@ def generate_launch_description():
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
         default_value=os.path.join(
-            bringup_dir, 'maps', 'turtlebot3_world.yaml'),
+            bringup_dir, 'maps', 'my_map_sim_250724.yaml'),
         description='Full path to map file to load')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -244,7 +244,7 @@ def generate_launch_description():
         launch_arguments={'namespace': namespace,
                           'use_namespace': use_namespace,
                           'slam': slam,
-                          'map': map_yaml_file,
+                        #   'map': map_yaml_file,
                           'use_sim_time': use_sim_time,
                           'params_file': params_file,
                           'autostart': autostart,
@@ -345,7 +345,7 @@ def generate_launch_description():
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_namespace_cmd)
     ld.add_action(declare_slam_cmd)
-    ld.add_action(declare_map_yaml_cmd)
+    # ld.add_action(declare_map_yaml_cmd)
 
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
