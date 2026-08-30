@@ -20,6 +20,8 @@ from geometry_msgs.msg import TransformStamped, PoseStamped
 from ultralytics import YOLO
 from my_custom_msgs.msg import Bbox
 from tf2_geometry_msgs import do_transform_pose_stamped
+from ament_index_python.packages import get_package_share_directory
+import os
 
 
 #Publishes the pose and bounding box of the robot regardless of whether it is detected.
@@ -40,7 +42,7 @@ class localizer(Node):
     def __init__(self):
         super().__init__('localizer')
 
-        self.declare_parameter('show_homographic_region',False)
+        self.declare_parameter('show_homographic_region',True)
         self.declare_parameter('name','0')
         self.declare_parameter('record',False)
         self.declare_parameter('publish_pose_tf', False)
@@ -48,7 +50,7 @@ class localizer(Node):
         self.declare_parameter('homographic_ori_points', [612,134,903,169,163,457,1079,619])
         self.declare_parameter('homographic_transformed_points', [0,0,1203,0,0,2869,1203,2869])
         # self.declare_parameter('yolo_model_path', "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_sim_v2/weights/best.pt")
-        self.declare_parameter('yolo_model_path', "/home/tarumt2204/YOLOv8_ws/yolov8n.pt")
+        self.declare_parameter('yolo_model_path', os.path.join(get_package_share_directory('my_localizer'),'weights','2880_best.pt'))
         self.declare_parameter('YOLO_confidence_threshold', 0.7)
 
 
