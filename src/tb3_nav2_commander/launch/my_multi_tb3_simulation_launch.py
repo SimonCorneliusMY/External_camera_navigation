@@ -56,7 +56,7 @@ def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('tb3_nav2_commander')
     launch_dir = os.path.join(bringup_dir, 'launch')
-
+    localizer_dir = get_package_share_directory('my_localizer')
 
     # Create the launch configuration variables
     slam = LaunchConfiguration('slam')
@@ -269,7 +269,7 @@ def generate_launch_description():
                     {'resolution': resolutions[i]},
                     {'homographic_ori_points': homographic_ori_points[i]},
                     {'homographic_transformed_points': homographic_transformed_points[i]},
-                    {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/yolov8n.pt"}]
+                    {'yolo_model_path': os.path.join(localizer_dir,'weights','yolo8n.pt')}]
     )
 
     for camera_address in camera_addresses:
@@ -313,7 +313,7 @@ def generate_launch_description():
                             {'homographic_ori_points': homographic_ori_points[i]},
                             {'homographic_transformed_points': homographic_transformed_points[i]},
                             # {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_sim_251103/weights/best.pt"}]
-                            {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/2880/weights/best.pt"}]
+                            {'yolo_model_path': os.path.join(localizer_dir,'weights','2880_best.pt')}]
             )
         )
         

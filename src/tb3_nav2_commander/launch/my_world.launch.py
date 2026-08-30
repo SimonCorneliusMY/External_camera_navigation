@@ -32,6 +32,7 @@ from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch.actions import SetEnvironmentVariable
 
 def generate_launch_description():
     launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'launch')
@@ -50,10 +51,16 @@ def generate_launch_description():
         'turtlebot3_burger',
         'model.sdf')
 
+    tb3_dir = get_package_share_directory('tb3_nav2_commander')
     world = os.path.join(
-        get_package_share_directory('tb3_nav2_commander'),
+        tb3_dir,
         'worlds',
         'SE_008.world'
+    )
+    
+    models = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_PATH',
+        value=os.path.join(tb3_dir, 'models')
     )
 
     
@@ -62,7 +69,8 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
         ),
-        launch_arguments={'world': world}.items()
+        launch_arguments={
+        'world': world}.items()
     )
 
     gzclient_cmd = IncludeLaunchDescription(
@@ -122,6 +130,7 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Add the commands to the launch description
+    ld.add_action(models)
     ld.add_action(gzserver_cmd)
     ld.add_action(gzclient_cmd)
     ld.add_action(robot_state_publisher_cmd)

@@ -19,6 +19,16 @@ setup(
         (os.path.join('share', package_name, 'worlds'), glob(os.path.join('worlds', '*.model*'))+ glob(os.path.join('worlds', '*.world'))),
         (os.path.join('share', package_name, 'rviz'), glob(os.path.join('rviz', '*.rviz*'))),
         (os.path.join('share', package_name, 'params'), glob(os.path.join('params', '*.yaml*'))),
+        *[
+            (
+                os.path.join(
+                    'share', package_name, os.path.dirname(f)
+                ),
+                [f]
+            )
+            for f in glob('models/**/*', recursive=True)
+            if os.path.isfile(f)
+        ],
     ],
     install_requires=['setuptools'],
     zip_safe=True,
