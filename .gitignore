@@ -4,9 +4,12 @@
 # Don't ignore directories (to allow tracking of directories)
 !*/
 
-# Don't ignore folders that contain 'plugin' in their name
+# Don't ignore these folders
 
 
 !/src/**
 !/versions/**
 
+# Ignore these files
+
+*__pycache__/
