@@ -40,8 +40,8 @@ def generate_launch_description():
     pkg_turtlebot3_gazebo = get_package_share_directory('turtlebot3_gazebo')
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    x_pose = LaunchConfiguration('x_pose', default='3.105339')
-    y_pose = LaunchConfiguration('y_pose', default='11.042339')
+    x_pose = LaunchConfiguration('x_pose', default='3.046540')
+    y_pose = LaunchConfiguration('y_pose', default='12.616602')
     urdf = os.path.join(pkg_turtlebot3_gazebo, 'urdf', 'turtlebot3_burger.urdf')
     with open(urdf, 'r') as infp:
         robot_description = infp.read()
