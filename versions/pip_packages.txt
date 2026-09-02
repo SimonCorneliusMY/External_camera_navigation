@@ -1,0 +1,6 @@
+scipy==1.8.0
+ultralytics==8.2.26
+torch==2.3.0
+torchvision==0.18.0
+setuptools==58.2.0
+lxml==6.1.2
