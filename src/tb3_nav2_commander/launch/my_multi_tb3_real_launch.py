@@ -71,6 +71,7 @@ def generate_launch_description():
     launch_dir = os.path.join(bringup_dir, 'launch')
     ros_bridge_dir = get_package_share_directory('rosbridge_server')
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
+    localizer_dir = get_package_share_directory('my_localizer')
 
     # Create the launch configuration variables
     slam = LaunchConfiguration('slam')
@@ -137,9 +138,9 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        # default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_240123.yaml'),
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_MPPI_250606.yaml'),
-        # default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
+        # default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_240123.yaml'),    # DWB controller params for ExPeNav2
+        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_real_MPPI_250606.yaml'), # MPPI controller params ExPeNav2
+        # default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),                # DWB params Nav2
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_autostart_cmd = DeclareLaunchArgument(
@@ -175,9 +176,9 @@ def generate_launch_description():
 
 
 
-    urdf = os.path.join(bringup_dir, 'urdf', 'turtlebot3_burger.urdf')
-    with open(urdf, 'r') as infp:
-        robot_description = infp.read()
+    # urdf = os.path.join(bringup_dir, 'urdf', 'turtlebot3_burger.urdf')
+    # with open(urdf, 'r') as infp:
+    #     robot_description = infp.read()
 
 
     ld = LaunchDescription()
@@ -199,7 +200,7 @@ def generate_launch_description():
                     {'resolution': low_resolution},
                     {'homographic_ori_points': homographic_ori_points[i]},
                     {'homographic_transformed_points': homographic_transformed_points[i]},
-                    {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/yolov8m.pt"},
+                    {'yolo_model_path': os.path.join(localizer_dir,'weights','yolo8m.pt')},
                     {'YOLO_confidence_threshold': 0.2}]
     )
 
@@ -244,7 +245,7 @@ def generate_launch_description():
                             {'resolution': low_resolution},
                             {'homographic_ori_points': homographic_ori_points[i]},
                             {'homographic_transformed_points': homographic_transformed_points[i]},
-                            {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/2880/weights/best.pt"},
+                            {'yolo_model_path': os.path.join(localizer_dir,'weights','2880_best.pt')},
                             {'YOLO_confidence_threshold': 0.7}]
                             # {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/runs/detect/TB3_train_v5/weights/best.pt"}]
                             # {'yolo_model_path': "/home/tarumt2204/YOLOv8_ws/yolov8n.pt"}]
